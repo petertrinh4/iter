@@ -1,0 +1,37 @@
+const axios = require('axios');
+
+async function getCircuitRoute(req, res) {
+    //waypoints are in the form of an array of strings, each string is a lat,long pair
+    if (!waypoints || waypoints.length < 3) {
+        return res.status(400).json({ error: 'At least three waypoints are required to calculate a circuit route.' });
+    }
+    
+    // Grab the very first waypoint
+    const firstWaypoint = waypoints[0];
+
+    // Join the waypoints into a single string for the OSRM API
+    const coordinates = waypoints.join(';');
+
+    // Slap the first waypoint at the end to make it a circuit
+    const coordinateChain = `${coordinates};${firstWaypoint}`;
+
+    // url for the OSRM API
+    const url = 'http://router.project-osrm.org/route/v1/foot/${coordinateChain}';
+
+    try {
+        const response = await axios.get(url, {
+            params: {
+                geometries: 'geojson',
+                overview: 'full'
+            },
+            headers: {
+                'User-Agent': 'RunningApp-Backend (yourname@email.com)'
+            }
+            });
+        return  { route: circuitGeoJson, distance: totalDistance};
+        }
+    catch (error) {
+        console.error("OSRM API request failed:", error);
+        return res.status(500).json({ error: 'Failed to fetch route from OSRM API.' });
+    }
+}
