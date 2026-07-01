@@ -50,7 +50,7 @@ export function MarketingPanel({ isLogin }: MarketingPanelProps) {
             <Zap className="size-5" style={{ color: brandColors.accent }} />
           </div>
           <span className="font-bold text-xl tracking-tight" style={{ color: brandColors.light }}>
-            Veloce
+            iter
           </span>
         </div>
 
@@ -61,7 +61,7 @@ export function MarketingPanel({ isLogin }: MarketingPanelProps) {
             <span style={{ color: brandColors.accent }}>moves with you.</span>
           </h1>
           <p className="mt-5 text-lg leading-relaxed max-w-md" style={{ color: 'rgba(237,231,217,0.7)' }}>
-            Veloce gives your team a single workspace to plan, build, and ship — without the noise.
+            iter gives your team a single workspace to plan, build, and ship — without the noise.
             From idea to production, faster than ever.
           </p>
         </div>
