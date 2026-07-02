@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { use, useState } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
-import { ArrowRight, Lock, Mail, User } from 'lucide-react';
+import { ArrowRight, Lock, Mail, User, AtSign } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -15,17 +15,57 @@ import {
 } from '../ui/card';
 import { brandColors } from '../../constants/marketing';
 import { useTheme } from '../../hooks/use-theme';
+import { set } from 'react-hook-form';
+
+const app_name = 'https://main.d16rmfrw6xdafc.amplifyapp.com/'; // Change to offical later
+
+function buildPath(route: string): string {
+  if (process.env.NODE_ENV !== 'development') {
+    return 'http://' + app_name + ':3000/' + route
+  } else {
+    return 'http://localhost:3000/' + route
+  }
+}
 
 export function RegisterForm() {
   const { isDark } = useTheme();
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Register', { name, email, password, confirmPassword });
+    setError('');
+    setSuccess('');
+    //console.log('Register', { name, email, password, confirmPassword });
+
+    if (password !== confirmPassword) {
+      setError('Passwords do no match');
+      return;
+    }
+
+    try {
+      const res = await fetch(buildPath('APIs/User/registerAPI'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, username, email, password }),
+      });
+ 
+      const data = await res.json();
+ 
+      if (!res.ok) {
+        setError(data.error || 'Registration failed.');
+      } else {
+        setSuccess('Account created successfully! You can now sign in.');
+      }
+    } catch (err) {
+      setError('Could not connect to the server. Is the backend running?');
+    }
+
   };
 
   return (
@@ -43,6 +83,14 @@ export function RegisterForm() {
 
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
+
+          {error && (
+            <p className='text-sm text-red-500 text-center'>{error}</p>
+          )}
+          {success && (
+            <p className='text-sm text-green-500 text-center'>{success}</p>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="name">Full Name</Label>
             <div className="relative">
@@ -58,6 +106,23 @@ export function RegisterForm() {
               />
             </div>
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="username">Username</Label>
+            <div className="relative">
+              <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Input
+                id="username"
+                type="text"
+                placeholder="johndoe123"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="pl-10"
+                required
+              />
+            </div>
+          </div>
+
 
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
