@@ -1,0 +1,20 @@
+service: run-app-api
+
+provider:
+  name: aws
+  runtime: nodejs22.x
+  region: us-east-1
+  environment:
+    MONGO_URI: ${env:MONGO_URI}
+    JWT_SECRET: ${env:JWT_SECRET}
+
+functions:
+  api:
+    handler: dist/lambda.handler
+    timeout: 30
+    memorySize: 512
+
+    events:
+      - httpApi:
+          path: /{proxy+}
+          method: ANY
