@@ -33,7 +33,7 @@ const User = (mongoose.models.User as mongoose.Model<IUser>) || mongoose.model<I
 // ==========================================
 // Insert User Registration API here
 // ==========================================
-router.post('/APIs/User/registerAPI', async (req: Request, res: Response) => {
+router.post('/registerAPI', async (req: Request, res: Response) => {
   try {
     const { name, username, email, password } = req.body;
 

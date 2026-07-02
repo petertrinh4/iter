@@ -10,8 +10,8 @@ const router = express.Router();
 // 1. TypeScript Interface for the User
 // This tells TypeScript exactly what data a User object should hold
 interface IUser extends mongoose.Document {
-  name: string;
-  email: string;
+  username: string;
+  //email: string;
   passwordHash: string;
   createdAt: Date;
 }
@@ -19,8 +19,8 @@ interface IUser extends mongoose.Document {
 // 2. Mongoose Schema
 // This tells MongoDB how to structure the data in the database
 const userSchema = new mongoose.Schema<IUser>({
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true, lowercase: true },
+  username: { type: String, required: true },
+  //email: { type: String, required: true, unique: true, lowercase: true },
   passwordHash: { type: String, required: true },
   createdAt: { type: Date, default: Date.now }
 });
@@ -32,23 +32,23 @@ const User = (mongoose.models.User as mongoose.Model<IUser>) || mongoose.model<I
 
 router.post('/api/users/login', async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
 
     // 1. Basic validation
-    if (!email || !password) {
-      return res.status(400).json({ error: "Please provide email and password." });
+    if (!username || !password) {
+      return res.status(400).json({ error: "Please provide username and password." });
     }
 
-    // 2. Find the user by their email
-    const user = await User.findOne({ email });
+    // 2. Find the user by their username
+    const user = await User.findOne({ username });
     if (!user) {
-      return res.status(401).json({ error: "Invalid email or password." });
+      return res.status(401).json({ error: "Invalid username or password." });
     }
 
     // 3. Compare the provided password with the hashed password in the database
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
-      return res.status(401).json({ error: "Invalid email or password." });
+      return res.status(401).json({ error: "Invalid username or password." });
     }
 
     // 4. Generate a JSON Web Token (JWT)
@@ -67,8 +67,9 @@ router.post('/api/users/login', async (req: Request, res: Response) => {
       token: token,
       user: {
         id: user._id,
-        name: user.name,
-        email: user.email
+        username: user.username
+        //name: user.name,
+        //email: user.email
       }
     });
 

@@ -12,13 +12,13 @@ dotenv.config();
 // 2. Initialize the Express application
 const app = express();
 
-app.use('/APIs/User', registerAPI); // Use the register API for user registration
-
 // 3. Configure Middleware
 // CORS allows your frontend (Vite/React) to communicate with this backend API
 app.use(cors());
 // express.json() allows your API to read JSON data sent in the request body (like passwords and emails)
 app.use(express.json());
+
+app.use('/APIs/User', registerAPI); // Use the register API for user registration
 
 // 4. Connect to MongoDB Atlas
 const connectDB = async () => {
