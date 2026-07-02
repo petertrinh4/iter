@@ -1,5 +1,5 @@
-import { use, useState } from 'react';
 import { Link } from 'react-router';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowRight, Lock, Mail, User, AtSign } from 'lucide-react';
 import { Button } from '../ui/button';
@@ -15,7 +15,6 @@ import {
 } from '../ui/card';
 import { brandColors } from '../../constants/marketing';
 import { useTheme } from '../../hooks/use-theme';
-import { set } from 'react-hook-form';
 
 const app_name = 'https://main.d16rmfrw6xdafc.amplifyapp.com/'; // Change to offical later
 
