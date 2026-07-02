@@ -16,14 +16,11 @@ import {
 import { brandColors } from '../../constants/marketing';
 import { useTheme } from '../../hooks/use-theme';
 
-const app_name = 'https://main.d16rmfrw6xdafc.amplifyapp.com/'; // Change to offical later
+//const app_name = 'https://main.d16rmfrw6xdafc.amplifyapp.com/'; // Change to offical later
+const API_BASE = import.meta.env.VITE_API_URL;
 
 function buildPath(route: string): string {
-  if (process.env.NODE_ENV !== 'development') {
-    return 'http://' + app_name + ':3000/' + route
-  } else {
-    return 'http://localhost:3000/' + route
-  }
+  return `${API_BASE}/${route}`;
 }
 
 export function RegisterForm() {
