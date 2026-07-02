@@ -30,7 +30,7 @@ const User = (mongoose.models.User as mongoose.Model<IUser>) || mongoose.model<I
 
 // 3. Login API Endpoint
 
-router.post('/api/users/login', async (req: Request, res: Response) => {
+router.post('/loginAPI', async (req: Request, res: Response) => {
   try {
     const { username, password } = req.body;
 
