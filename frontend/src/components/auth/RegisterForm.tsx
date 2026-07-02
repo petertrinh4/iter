@@ -17,6 +17,16 @@ import { brandColors } from '../../constants/marketing';
 import { useTheme } from '../../hooks/use-theme';
 import { set } from 'react-hook-form';
 
+const app_name = 'https://main.d16rmfrw6xdafc.amplifyapp.com/'; // Change to offical later
+
+function buildPath(route: string): string {
+  if (process.env.NODE_ENV !== 'development') {
+    return 'http://' + app_name + ':3000/' + route
+  } else {
+    return 'http://localhost:3000/' + route
+  }
+}
+
 export function RegisterForm() {
   const { isDark } = useTheme();
   const [name, setName] = useState('');
@@ -39,7 +49,7 @@ export function RegisterForm() {
     }
 
     try {
-      const res = await fetch('http://localhost:3000/APIs/User/registerAPI', {
+      const res = await fetch(buildPath('APIs/User/registerAPI'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, username, email, password }),
