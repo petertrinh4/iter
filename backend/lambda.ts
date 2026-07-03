@@ -4,4 +4,6 @@ import { connectDB } from "./utils/db.js";
 
 await connectDB();
 
-export const handler = serverless(app);
+export const handler = serverless(app, {
+  basePath: "/prod",
+});
