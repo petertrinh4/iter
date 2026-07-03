@@ -19,6 +19,7 @@ import { useNavigate } from "react-router";
 
 //const app_name = 'https://main.d16rmfrw6xdafc.amplifyapp.com/'; // Change to offical later
 const API_BASE = import.meta.env.VITE_API_URL;
+console.log("API_BASE =", API_BASE);
 
 export function RegisterForm() {
   const navigate = useNavigate();
