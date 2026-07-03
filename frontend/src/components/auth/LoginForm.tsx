@@ -21,10 +21,44 @@ export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Login', { email, password });
-  };
+  const API_BASE = import.meta.env.VITE_API_URL;
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        password,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.message || "Login failed");
+      return;
+    }
+
+    // 🔥 STORE TOKEN (important)
+    localStorage.setItem("idToken", data.idToken);
+    localStorage.setItem("accessToken", data.accessToken);
+
+    console.log("Login success:", data);
+
+    // TODO: redirect to dashboard later
+    // navigate("/dashboard");
+
+  } catch (err) {
+    console.error(err);
+    alert("Server error");
+  }
+};
 
   return (
     <Card className="shadow-none border-0 bg-transparent rounded-none">

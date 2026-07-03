@@ -3,6 +3,7 @@ import { ThemeProvider } from './hooks/use-theme';
 import { AuthLayout } from './layouts/AuthLayout';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import { VerifyPage } from "./pages/VerifyPage";
 
 export default function App() {
   return (
@@ -10,11 +11,13 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route element={<AuthLayout />}>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Route>
+  <Route path="/login" element={<LoginPage />} />
+  <Route path="/register" element={<RegisterPage />} />
+  <Route path="/verify" element={<VerifyPage />} />
+
+  <Route path="/" element={<Navigate to="/login" replace />} />
+  <Route path="*" element={<Navigate to="/login" replace />} />
+</Route>
         </Routes>
       </BrowserRouter>
     </ThemeProvider>

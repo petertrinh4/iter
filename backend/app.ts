@@ -6,7 +6,13 @@ import userRoutes from "./routes/userRoutes.js";
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "https://www.teamtitan.net"
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 app.get("/", (_, res) => {
