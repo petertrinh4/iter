@@ -1,19 +1,19 @@
-import express from 'express';
-import cors from 'cors';
+import express from "express";
+import cors from "cors";
 
-import registerAPI from './APIs/User/registerAPI.js';
-import loginAPI from './APIs/User/loginAPI.js';
+import authRoutes from "./routes/authRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-app.get('/', (_, res) => {
-  res.send('🏃‍♂️ Running App API is up and running!');
+app.get("/", (_, res) => {
+  res.send("🏃‍♂️ Running App API is up and running!");
 });
 
-app.use('/APIs/User', registerAPI);
-app.use('/APIs/User', loginAPI);
+app.use("/api/auth", authRoutes);
+app.use("/api/user", userRoutes);
 
 export default app;
