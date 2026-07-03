@@ -1,5 +1,9 @@
 service: run-app-api
 
+package:
+  patterns:
+    - dist/**
+
 provider:
   name: aws
   runtime: nodejs22.x
