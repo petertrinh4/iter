@@ -4,9 +4,7 @@ import {
   ConfirmSignUpCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 
-import {
-  InitiateAuthCommand,
-} from "@aws-sdk/client-cognito-identity-provider";
+import { InitiateAuthCommand } from "@aws-sdk/client-cognito-identity-provider";
 
 import { cognito } from "../utils/cognito.js";
 import jwt from "jsonwebtoken";
@@ -15,26 +13,29 @@ import User from "../models/User.js";
 export const register = async (req: Request, res: Response) => {
   const { email, password, name, username } = req.body;
 
-  await cognito.send(new SignUpCommand({
+if (!email || !password || !name || !username) {
+  return res.status(400).json({
+    message: "Missing fields",
+  });
+}
+
+await cognito.send(
+  new SignUpCommand({
     ClientId: process.env.COGNITO_CLIENT_ID!,
     Username: email,
     Password: password,
     UserAttributes: [
-      { Name: "email", Value: email }
+      {
+        Name: "email",
+        Value: email,
+      },
     ],
-  }));
+  })
+);
 
-  // store temp user in DB (optional but clean)
-  await User.create({
-    cognitoSub: "pending",
-    email,
-    name,
-    username,
-  });
-
-  return res.status(201).json({
-    message: "Verification code sent."
-  });
+return res.status(201).json({
+  message: "Verification code sent.",
+});
 };
 
 export const verifyEmail = async (req: Request, res: Response) => {
@@ -46,13 +47,12 @@ export const verifyEmail = async (req: Request, res: Response) => {
         ClientId: process.env.COGNITO_CLIENT_ID!,
         Username: email,
         ConfirmationCode: code,
-      })
+      }),
     );
 
     return res.status(200).json({
       message: "Email verified successfully.",
     });
-
   } catch (error) {
     console.error(error);
     return res.status(400).json({
@@ -73,7 +73,7 @@ export const login = async (req: Request, res: Response) => {
           USERNAME: email,
           PASSWORD: password,
         },
-      })
+      }),
     );
 
     const authResult = result.AuthenticationResult;
@@ -124,7 +124,6 @@ export const completeProfile = async (req: Request, res: Response) => {
       message: "Profile created",
       user,
     });
-
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
