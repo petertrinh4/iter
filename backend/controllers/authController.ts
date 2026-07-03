@@ -9,9 +9,11 @@ import {
 } from "@aws-sdk/client-cognito-identity-provider";
 
 import { cognito } from "../utils/cognito.js";
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
 
 export const register = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { email, password, name, username } = req.body;
 
   try {
     await cognito.send(
@@ -20,10 +22,9 @@ export const register = async (req: Request, res: Response) => {
         Username: email,
         Password: password,
         UserAttributes: [
-          {
-            Name: "email",
-            Value: email,
-          },
+          { Name: "email", Value: email },
+          { Name: "name", Value: name }, // 👈 add this
+          { Name: "preferred_username", Value: username }, // 👈 add this
         ],
       })
     );
@@ -33,7 +34,6 @@ export const register = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error(error);
-
     res.status(400).json({
       message: "Registration failed.",
     });
@@ -41,7 +41,7 @@ export const register = async (req: Request, res: Response) => {
 };
 
 export const verifyEmail = async (req: Request, res: Response) => {
-  const { email, code } = req.body;
+  const { email, code, name, username } = req.body;
 
   try {
     await cognito.send(
@@ -51,6 +51,18 @@ export const verifyEmail = async (req: Request, res: Response) => {
         ConfirmationCode: code,
       })
     );
+
+    // create MongoDB user AFTER verification
+    const existing = await User.findOne({ email });
+
+    if (!existing) {
+      await User.create({
+        cognitoSub: email, // temporary until login (or better: set after login)
+        email,
+        name,
+        username,
+      });
+    }
 
     res.status(200).json({
       message: "Email verified successfully.",
@@ -94,9 +106,40 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-export const completeProfile = async (
-  req: Request,
-  res: Response
-) => {
-  // later
+export const completeProfile = async (req: Request, res: Response) => {
+  try {
+    const { idToken, name, username } = req.body;
+
+    if (!idToken || !name || !username) {
+      return res.status(400).json({ message: "Missing fields" });
+    }
+
+    // decode Cognito token (no verification needed if already trusted after login)
+    const decoded: any = jwt.decode(idToken);
+
+    const cognitoSub = decoded.sub;
+    const email = decoded.email;
+
+    // prevent duplicates
+    const existing = await User.findOne({ cognitoSub });
+    if (existing) {
+      return res.status(200).json({ message: "Profile already exists" });
+    }
+
+    const user = await User.create({
+      cognitoSub,
+      email,
+      name,
+      username,
+    });
+
+    res.status(201).json({
+      message: "Profile created",
+      user,
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
 };
