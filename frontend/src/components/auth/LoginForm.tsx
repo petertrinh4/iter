@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
-import { ArrowRight, Lock, Mail } from 'lucide-react';
+import { ArrowRight, Lock, AtSign } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -16,14 +16,46 @@ import {
 import { brandColors } from '../../constants/marketing';
 import { useTheme } from '../../hooks/use-theme';
 
+const API_BASE = import.meta.env.VITE_API_URL;
+
+function buildPath(route: string): string {
+  return `${API_BASE}/${route}`;
+}
+
 export function LoginForm() {
   const { isDark } = useTheme();
-  const [email, setEmail] = useState('');
+  const navigate = useNavigate();
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Login', { email, password });
+    setError('');
+    //console.log('Login', { email, password });
+
+    try {
+      const res = await fetch(buildPath('APIs/User/loginAPI'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+ 
+      const data = await res.json();
+ 
+      if (!res.ok) {
+        setError(data.error || 'Login failed.');
+      } else {
+        // Store the token and user data
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user_data', JSON.stringify(data.user));
+        // Redirect to home or dashboard after login
+        navigate('/');
+      }
+    } catch (err) {
+      setError('Could not connect to the server. Is the backend running?');
+    }
+
   };
 
   return (
@@ -41,21 +73,27 @@ export function LoginForm() {
 
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
+
+          {error && (
+            <p className="text-sm text-red-500 text-center">{error}</p>
+          )}
+
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="username">Username</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="username"
+                type="text"
+                placeholder="johndoe123"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 className="pl-10"
                 required
               />
             </div>
           </div>
+
 
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
