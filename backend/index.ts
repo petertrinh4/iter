@@ -5,6 +5,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 
 import registerAPI from './APIs/User/registerAPI.js'; // Import the register API router
+import loginAPI from './APIs/User/loginAPI.js'; // Import the login API router
+import saveRouteAPI from './APIs/routes/SaveRouteAPI.js'; // Import the save route API router
 
 // 1. Load environment variables from your .env file
 dotenv.config();
@@ -19,6 +21,8 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/APIs/User', registerAPI); // Use the register API for user registration
+app.use('/APIs/User', loginAPI); // Use the login API for user login
+app.use('/APIs/routes', saveRouteAPI); // Use the save route API for saving routes
 
 // 4. Connect to MongoDB Atlas
 const connectDB = async () => {
