@@ -1,5 +1,13 @@
 import { useMemo, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polyline,
+  useMapEvents,
+} from "react-leaflet";
+import type { LatLngExpression } from "leaflet";
 import { Plus, Route, CalendarDays } from "lucide-react";
 
 type Panel = "create" | "saved" | "calendar";
@@ -9,12 +17,37 @@ type Run = {
   distance: number;
 };
 
+type SavedRoute = {
+  name: string;
+  points: LatLngExpression[];
+};
+
+function PathDrawer({
+  onAddPoint,
+}: {
+  onAddPoint: (point: LatLngExpression) => void;
+}) {
+  useMapEvents({
+    click(e) {
+      onAddPoint([e.latlng.lat, e.latlng.lng]);
+    },
+  });
+
+  return null;
+}
+
 export function HomePage() {
   const [activePanel, setActivePanel] = useState<Panel>("create");
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  // Mock data for now
+  const [pathPoints, setPathPoints] = useState<LatLngExpression[]>([]);
+
+  const [routeName, setRouteName] = useState("");
+
+  const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
+
+  // Mock calendar data for now
   const runs: Record<string, Run> = {
     "2026-07-03": {
       route: "UCF Loop",
@@ -76,6 +109,20 @@ export function HomePage() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
 
+            <PathDrawer
+              onAddPoint={(point) => {
+                if (activePanel === "create") {
+                  setPathPoints((prev) => [...prev, point]);
+                }
+              }}
+            />
+
+            {pathPoints.length > 0 && <Polyline positions={pathPoints} />}
+
+            {pathPoints.map((point, index) => (
+              <Marker key={index} position={point} />
+            ))}
+
             <Marker position={[28.6024, -81.2001]}>
               <Popup>Welcome to Running App 🏃</Popup>
             </Marker>
@@ -135,16 +182,61 @@ export function HomePage() {
           {/* Content */}
           <div className="flex-1 overflow-y-auto border-t border-sidebar-border p-5">
             {activePanel === "create" && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Create Path</h3>
+              <div className="space-y-5">
+                <div>
+                  <h3 className="text-lg font-semibold">Create Path</h3>
 
-                <p className="text-sm text-muted-foreground">
-                  Click points on the map to create custom running routes.
-                </p>
-
-                <div className="rounded-xl border border-dashed border-border p-4">
-                  Path creation tools coming soon.
+                  <p className="text-sm text-muted-foreground">
+                    Click on the map to create your route.
+                  </p>
                 </div>
+
+                <div className="rounded-xl border border-border bg-muted/20 p-4">
+                  <p className="text-sm">
+                    Points Added:{" "}
+                    <span className="font-semibold">{pathPoints.length}</span>
+                  </p>
+                </div>
+
+                <input
+                  type="text"
+                  value={routeName}
+                  onChange={(e) => setRouteName(e.target.value)}
+                  placeholder="Morning Run"
+                  className="w-full rounded-xl border border-input bg-input px-4 py-3 outline-none"
+                />
+
+                <button
+                  onClick={() => {
+                    if (routeName.trim() === "" || pathPoints.length < 2) {
+                      alert("Please add at least 2 points and a route name.");
+                      return;
+                    }
+
+                    setSavedRoutes((prev) => [
+                      ...prev,
+                      {
+                        name: routeName,
+                        points: pathPoints,
+                      },
+                    ]);
+
+                    setRouteName("");
+                    setPathPoints([]);
+
+                    alert("Route saved!");
+                  }}
+                  className="w-full rounded-xl bg-green-500 px-4 py-3 font-medium text-black transition hover:opacity-90"
+                >
+                  Save Path
+                </button>
+
+                <button
+                  onClick={() => setPathPoints([])}
+                  className="w-full rounded-xl border border-border px-4 py-3 hover:bg-muted"
+                >
+                  Clear Path
+                </button>
               </div>
             )}
 
@@ -152,13 +244,24 @@ export function HomePage() {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Saved Paths</h3>
 
-                <p className="text-sm text-muted-foreground">
-                  View your saved routes.
-                </p>
+                {savedRoutes.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-border p-4">
+                    No saved routes yet.
+                  </div>
+                ) : (
+                  savedRoutes.map((route, index) => (
+                    <div
+                      key={index}
+                      className="rounded-xl border border-border bg-muted/20 p-4"
+                    >
+                      <h4 className="font-medium">{route.name}</h4>
 
-                <div className="rounded-xl border border-dashed border-border p-4">
-                  No saved routes yet.
-                </div>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {route.points.length} points
+                      </p>
+                    </div>
+                  ))
+                )}
               </div>
             )}
 
@@ -174,7 +277,6 @@ export function HomePage() {
                   </p>
                 </div>
 
-                {/* Days of week */}
                 <div className="grid grid-cols-7 gap-2">
                   {["S", "M", "T", "W", "T", "F", "S"].map((day) => (
                     <div
@@ -185,7 +287,6 @@ export function HomePage() {
                     </div>
                   ))}
 
-                  {/* Calendar cells */}
                   {calendarCells.map((day, index) => {
                     if (!day) {
                       return <div key={index} className="aspect-square" />;
@@ -214,7 +315,6 @@ export function HomePage() {
                   })}
                 </div>
 
-                {/* Selected day */}
                 {selectedDate && (
                   <div className="rounded-xl border border-border bg-muted/20 p-4">
                     <h4 className="font-medium">{selectedDate}</h4>
