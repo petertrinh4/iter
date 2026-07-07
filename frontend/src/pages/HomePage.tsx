@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -7,8 +7,8 @@ import {
   Polyline,
   useMapEvents,
 } from "react-leaflet";
-import type { LatLngExpression } from "leaflet";
 import { Plus, Route, CalendarDays } from "lucide-react";
+import { getWalkingRoute } from "../services/routing";
 
 type Panel = "create" | "saved" | "calendar";
 
@@ -18,14 +18,16 @@ type Run = {
 };
 
 type SavedRoute = {
-  name: string;
-  points: LatLngExpression[];
+  _id: string;
+  routeName: string;
+  distanceMiles: number;
+  waypoints: number[][];
 };
 
 function PathDrawer({
   onAddPoint,
 }: {
-  onAddPoint: (point: LatLngExpression) => void;
+  onAddPoint: (point: [number, number]) => void;
 }) {
   useMapEvents({
     click(e) {
@@ -41,22 +43,137 @@ export function HomePage() {
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  const [pathPoints, setPathPoints] = useState<LatLngExpression[]>([]);
+  const [pathPoints, setPathPoints] =
+  useState<[number, number][]>([]);
+
+const [routeGeometry, setRouteGeometry] =
+  useState<[number, number][]>([]);
+
+const [distance, setDistance] =
+  useState(0);
+
+  const [selectedRoute, setSelectedRoute] =
+  useState<[number, number][]>([]);
 
   const [routeName, setRouteName] = useState("");
 
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
 
-  // Mock calendar data for now
+const calculateRoute = async () => {
+  try {
+    const result = await getWalkingRoute(
+      pathPoints as [number, number][]
+    );
+
+    setRouteGeometry(result.geometry);
+    setDistance(result.distanceMiles);
+
+    return result;
+
+  } catch(error) {
+    console.error(error);
+    alert("Could not calculate walking route");
+  }
+};
+
+  /*
+   * Load saved routes from backend
+   */
+  const loadRoutes = async () => {
+    try {
+      const token = localStorage.getItem("idToken");
+
+      const response = await fetch(
+    `${import.meta.env.VITE_API_URL}/api/routes/my-routes`,
+    {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      setSavedRoutes(data);
+    } catch (error) {
+      console.error("Failed loading routes:", error);
+    }
+  };
+
+  useEffect(() => {
+    loadRoutes();
+  }, []);
+
+  /*
+   * Save route to backend
+   */
+  const saveRoute = async (
+  routeData: {
+    geometry: [number, number][];
+    distanceMiles: number;
+  }
+) => {
+    if (routeName.trim() === "" || pathPoints.length < 2) {
+      alert("Add at least 2 points and a name");
+
+      return;
+    }
+
+    const token = localStorage.getItem("idToken");
+
+    const waypoints = routeData.geometry.map(
+  ([lat, lng]) => [
+    lng,
+    lat
+  ]
+);
+
+    const response = await fetch(
+    `${import.meta.env.VITE_API_URL}/api/routes/save`,
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+
+      body: JSON.stringify({
+        routeName,
+
+        distanceMiles: distance,
+
+        waypoints,
+      }),
+    });
+
+    if (response.ok) {
+      alert("Route saved");
+
+      setRouteName("");
+
+      setPathPoints([]);
+
+      loadRoutes();
+    } else {
+      alert("Failed saving route");
+    }
+  };
+
+  /*
+   * Fake calendar data for now
+   */
   const runs: Record<string, Run> = {
     "2026-07-03": {
       route: "UCF Loop",
       distance: 3.1,
     },
+
     "2026-07-05": {
       route: "Lake Eola",
       distance: 5.2,
     },
+
     "2026-07-08": {
       route: "Neighborhood Run",
       distance: 2.4,
@@ -66,6 +183,7 @@ export function HomePage() {
   const today = new Date();
 
   const year = today.getFullYear();
+
   const month = today.getMonth();
 
   const { monthName, calendarCells } = useMemo(() => {
@@ -83,12 +201,11 @@ export function HomePage() {
       cells.push(day);
     }
 
-    const monthName = new Date(year, month).toLocaleString("default", {
-      month: "long",
-    });
-
     return {
-      monthName,
+      monthName: new Date(year, month).toLocaleString("default", {
+        month: "long",
+      }),
+
       calendarCells: cells,
     };
   }, [month, year]);
@@ -96,7 +213,6 @@ export function HomePage() {
   return (
     <div className="h-screen w-screen overflow-hidden bg-background text-foreground">
       <div className="flex h-full">
-        {/* MAP */}
         <main className="flex-1">
           <MapContainer
             center={[28.6024, -81.2001]}
@@ -117,14 +233,20 @@ export function HomePage() {
               }}
             />
 
-            {pathPoints.length > 0 && <Polyline positions={pathPoints} />}
+            {routeGeometry.length > 0 && (
+  <Polyline
+    positions={routeGeometry}
+  />
+)}
+
+            {selectedRoute.length > 0 && <Polyline positions={selectedRoute} />}
 
             {pathPoints.map((point, index) => (
               <Marker key={index} position={point} />
             ))}
 
             <Marker position={[28.6024, -81.2001]}>
-              <Popup>Welcome to Running App 🏃</Popup>
+              <Popup>Running App 🏃</Popup>
             </Marker>
           </MapContainer>
         </main>
@@ -144,127 +266,164 @@ export function HomePage() {
           <div className="space-y-3 p-5">
             <button
               onClick={() => setActivePanel("create")}
-              className={`flex w-full items-center gap-3 rounded-xl border p-4 transition-all duration-200 ${
+              className={`flex w-full items-center gap-3 rounded-xl border p-4 transition ${
                 activePanel === "create"
                   ? "border-primary bg-accent text-accent-foreground"
-                  : "border-border bg-muted/40 hover:bg-accent hover:text-accent-foreground"
+                  : "border-border bg-muted/40 hover:bg-accent"
               }`}
             >
               <Plus size={20} />
-              <span>Create Path</span>
+              Create Path
             </button>
 
             <button
               onClick={() => setActivePanel("saved")}
-              className={`flex w-full items-center gap-3 rounded-xl border p-4 transition-all duration-200 ${
+              className={`flex w-full items-center gap-3 rounded-xl border p-4 transition ${
                 activePanel === "saved"
                   ? "border-primary bg-accent text-accent-foreground"
-                  : "border-border bg-muted/40 hover:bg-accent hover:text-accent-foreground"
+                  : "border-border bg-muted/40 hover:bg-accent"
               }`}
             >
               <Route size={20} />
-              <span>Saved Paths</span>
+              Saved Paths
             </button>
 
             <button
               onClick={() => setActivePanel("calendar")}
-              className={`flex w-full items-center gap-3 rounded-xl border p-4 transition-all duration-200 ${
+              className={`flex w-full items-center gap-3 rounded-xl border p-4 transition ${
                 activePanel === "calendar"
                   ? "border-primary bg-accent text-accent-foreground"
-                  : "border-border bg-muted/40 hover:bg-accent hover:text-accent-foreground"
+                  : "border-border bg-muted/40 hover:bg-accent"
               }`}
             >
               <CalendarDays size={20} />
-              <span>Calendar</span>
+              Calendar
             </button>
           </div>
 
-          {/* Content */}
+          {/* PANEL CONTENT */}
           <div className="flex-1 overflow-y-auto border-t border-sidebar-border p-5">
+            {/* CREATE PATH */}
             {activePanel === "create" && (
               <div className="space-y-5">
                 <div>
                   <h3 className="text-lg font-semibold">Create Path</h3>
 
                   <p className="text-sm text-muted-foreground">
-                    Click on the map to create your route.
+                    Click on the map to create a route.
                   </p>
                 </div>
 
                 <div className="rounded-xl border border-border bg-muted/20 p-4">
-                  <p className="text-sm">
-                    Points Added:{" "}
-                    <span className="font-semibold">{pathPoints.length}</span>
-                  </p>
+                  Points Added:
+                  <span className="ml-2 font-bold">{pathPoints.length}</span>
                 </div>
 
                 <input
-                  type="text"
                   value={routeName}
                   onChange={(e) => setRouteName(e.target.value)}
                   placeholder="Morning Run"
-                  className="w-full rounded-xl border border-input bg-input px-4 py-3 outline-none"
+                  className="w-full rounded-xl border border-input bg-input px-4 py-3"
                 />
 
                 <button
-                  onClick={() => {
-                    if (routeName.trim() === "" || pathPoints.length < 2) {
-                      alert("Please add at least 2 points and a route name.");
-                      return;
-                    }
+                  onClick={async () => {
 
-                    setSavedRoutes((prev) => [
-                      ...prev,
-                      {
-                        name: routeName,
-                        points: pathPoints,
-                      },
-                    ]);
+  const routeData = await calculateRoute();
 
-                    setRouteName("");
-                    setPathPoints([]);
+  if (!routeData) return;
 
-                    alert("Route saved!");
-                  }}
-                  className="w-full rounded-xl bg-green-500 px-4 py-3 font-medium text-black transition hover:opacity-90"
+  await saveRoute(routeData);
+
+}}
+
+                  className="
+                    w-full rounded-xl
+                    bg-green-500
+                    px-4 py-3
+                    font-semibold
+                    text-black
+                    hover:opacity-90
+                  "
                 >
                   Save Path
                 </button>
 
                 <button
-                  onClick={() => setPathPoints([])}
-                  className="w-full rounded-xl border border-border px-4 py-3 hover:bg-muted"
+                  onClick={() => {
+                    setPathPoints([]);
+                  }}
+
+                  className="
+                    w-full rounded-xl
+                    border border-border
+                    px-4 py-3
+                    hover:bg-muted
+                  "
                 >
                   Clear Path
                 </button>
               </div>
             )}
 
+            {/* SAVED ROUTES */}
             {activePanel === "saved" && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Saved Paths</h3>
 
-                {savedRoutes.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-border p-4">
-                    No saved routes yet.
+                {savedRoutes.length === 0 && (
+                  <div
+                    className="
+                    rounded-xl
+                    border border-dashed
+                    border-border
+                    p-4
+                  "
+                  >
+                    No saved routes.
                   </div>
-                ) : (
-                  savedRoutes.map((route, index) => (
-                    <div
-                      key={index}
-                      className="rounded-xl border border-border bg-muted/20 p-4"
-                    >
-                      <h4 className="font-medium">{route.name}</h4>
-
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        {route.points.length} points
-                      </p>
-                    </div>
-                  ))
                 )}
+
+                {savedRoutes.map((route) => (
+                  <button
+                    key={route._id}
+
+                    onClick={() => {
+                      const points = route.waypoints.map(
+  ([lng, lat]) => [lat, lng] as [number, number]
+);
+
+setSelectedRoute(points);
+
+                      setSelectedRoute(points);
+                    }}
+
+                    className="
+                      w-full
+                      rounded-xl
+                      border border-border
+                      bg-muted/20
+                      p-4
+                      text-left
+                      transition
+                      hover:bg-accent
+                    "
+                  >
+                    <h4 className="font-semibold">{route.routeName}</h4>
+
+                    <p className="text-sm text-muted-foreground">
+                      {route.distanceMiles} miles
+                    </p>
+
+                    <p className="text-xs text-muted-foreground">
+                      {route.waypoints.length} points
+                    </p>
+                  </button>
+                ))}
               </div>
             )}
 
+            {/* CALENDAR */}
             {activePanel === "calendar" && (
               <div className="space-y-5">
                 <div>
@@ -273,7 +432,7 @@ export function HomePage() {
                   </h3>
 
                   <p className="text-sm text-muted-foreground">
-                    Your running history
+                    Running history
                   </p>
                 </div>
 
@@ -281,7 +440,11 @@ export function HomePage() {
                   {["S", "M", "T", "W", "T", "F", "S"].map((day) => (
                     <div
                       key={day}
-                      className="text-center text-xs font-medium text-muted-foreground"
+                      className="
+                        text-center
+                        text-xs
+                        text-muted-foreground
+                      "
                     >
                       {day}
                     </div>
@@ -292,22 +455,29 @@ export function HomePage() {
                       return <div key={index} className="aspect-square" />;
                     }
 
-                    const dateKey = `${year}-${String(month + 1).padStart(
-                      2,
-                      "0"
-                    )}-${String(day).padStart(2, "0")}`;
+                    const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
                     const run = runs[dateKey];
 
                     return (
                       <button
                         key={dateKey}
+
                         onClick={() => setSelectedDate(dateKey)}
-                        className={`aspect-square rounded-lg border text-sm transition ${
-                          run
-                            ? "border-green-500 bg-green-500/20 text-green-400 hover:bg-green-500/30"
-                            : "border-border bg-muted/30 hover:bg-muted"
-                        }`}
+
+                        className={`
+                          aspect-square
+                          rounded-lg
+                          border
+                          text-sm
+
+                          ${
+                            run
+                              ? "border-green-500 bg-green-500/20 text-green-400"
+                              : "border-border bg-muted/30"
+                          }
+
+                        `}
                       >
                         {day}
                       </button>
@@ -316,25 +486,34 @@ export function HomePage() {
                 </div>
 
                 {selectedDate && (
-                  <div className="rounded-xl border border-border bg-muted/20 p-4">
-                    <h4 className="font-medium">{selectedDate}</h4>
+                  <div
+                    className="
+                    rounded-xl
+                    border border-border
+                    bg-muted/20
+                    p-4
+                  "
+                  >
+                    <h4 className="font-semibold">{selectedDate}</h4>
 
                     {runs[selectedDate] ? (
-                      <div className="mt-3 space-y-2 text-sm">
+                      <div className="mt-3 text-sm space-y-2">
                         <p>
-                          <span className="text-muted-foreground">Route:</span>{" "}
-                          {runs[selectedDate].route}
+                          Route:
+                          <span className="ml-2">
+                            {runs[selectedDate].route}
+                          </span>
                         </p>
 
                         <p>
-                          <span className="text-muted-foreground">
-                            Distance:
-                          </span>{" "}
-                          {runs[selectedDate].distance} mi
+                          Distance:
+                          <span className="ml-2">
+                            {runs[selectedDate].distance} mi
+                          </span>
                         </p>
                       </div>
                     ) : (
-                      <p className="mt-3 text-sm text-muted-foreground">
+                      <p className="text-sm text-muted-foreground mt-3">
                         No run recorded.
                       </p>
                     )}

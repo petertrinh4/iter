@@ -9,17 +9,22 @@ import {
 
 import { cognito } from "../utils/cognito.js";
 import User from "../models/User.js";
+import jwt from "jsonwebtoken";
 
 export const register = async (req: Request, res: Response) => {
+  console.log("REGISTER HIT");
+
   const { email, password, name, username } = req.body;
 
-  if (!email || !password || !name || !username) {
-    return res.status(400).json({
-      message: "Missing fields",
-    });
-  }
+  console.log("Request body:", {
+    email,
+    name,
+    username,
+  });
 
   try {
+    console.log("Calling Cognito...");
+
     await cognito.send(
       new SignUpCommand({
         ClientId: process.env.COGNITO_CLIENT_ID!,
@@ -30,15 +35,26 @@ export const register = async (req: Request, res: Response) => {
             Name: "email",
             Value: email,
           },
+          {
+            Name: "name",
+            Value: name,
+          },
+          {
+            Name: "preferred_username",
+            Value: username,
+          },
         ],
       }),
     );
 
+    console.log("Cognito signup complete");
+
     return res.status(201).json({
       message: "Verification code sent.",
     });
+
   } catch (error) {
-    console.error(error);
+    console.error("REGISTER ERROR:", error);
 
     return res.status(400).json({
       message: "Registration failed.",
@@ -47,9 +63,9 @@ export const register = async (req: Request, res: Response) => {
 };
 
 export const verifyEmail = async (req: Request, res: Response) => {
-  const { email, code, name, username } = req.body;
+  const { email, code } = req.body;
 
-  if (!email || !code || !name || !username) {
+  if (!email || !code) {
     return res.status(400).json({
       message: "Missing fields",
     });
@@ -63,20 +79,6 @@ export const verifyEmail = async (req: Request, res: Response) => {
         ConfirmationCode: code,
       }),
     );
-
-    const existing = await User.findOne({ email });
-    console.log("Existing user:", existing);
-
-    if (!existing) {
-      const user = await User.create({
-        cognitoSub: email,
-        email,
-        name,
-        username,
-      });
-
-      console.log("Created user:", user);
-    }
 
     return res.status(200).json({
       message: "Email verified successfully.",
@@ -113,6 +115,41 @@ export const login = async (req: Request, res: Response) => {
 
     const authResult = result.AuthenticationResult;
 
+    const idToken = authResult?.IdToken;
+
+    if (!idToken) {
+      return res.status(401).json({
+        message: "Missing ID token",
+      });
+    }
+
+    const decoded = jwt.decode(idToken) as any;
+
+    if (!decoded) {
+      return res.status(401).json({
+        message: "Invalid token",
+      });
+    }
+
+    const cognitoSub = decoded.sub;
+    const cognitoEmail = decoded.email;
+    const cognitoName = decoded.name;
+    const cognitoUsername = decoded.preferred_username;
+
+    // Create MongoDB user if first login
+    const existingUser = await User.findOne({
+      cognitoSub,
+    });
+
+    if (!existingUser) {
+      await User.create({
+        cognitoSub,
+        email: cognitoEmail,
+        name: cognitoName,
+        username: cognitoUsername,
+      });
+    }
+
     return res.status(200).json({
       message: "Login successful",
       accessToken: authResult?.AccessToken,
@@ -128,10 +165,7 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-export const forgotPassword = async (
-  req: Request,
-  res: Response
-) => {
+export const forgotPassword = async (req: Request, res: Response) => {
   const { email } = req.body;
 
   if (!email) {
@@ -145,7 +179,7 @@ export const forgotPassword = async (
       new ForgotPasswordCommand({
         ClientId: process.env.COGNITO_CLIENT_ID!,
         Username: email,
-      })
+      }),
     );
 
     return res.status(200).json({
@@ -160,10 +194,7 @@ export const forgotPassword = async (
   }
 };
 
-export const resetPassword = async (
-  req: Request,
-  res: Response
-) => {
+export const resetPassword = async (req: Request, res: Response) => {
   const { email, code, newPassword } = req.body;
 
   if (!email || !code || !newPassword) {
@@ -179,7 +210,7 @@ export const resetPassword = async (
         Username: email,
         ConfirmationCode: code,
         Password: newPassword,
-      })
+      }),
     );
 
     return res.status(200).json({
