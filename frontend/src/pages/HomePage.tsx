@@ -43,38 +43,31 @@ export function HomePage() {
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  const [pathPoints, setPathPoints] =
-  useState<[number, number][]>([]);
+  const [pathPoints, setPathPoints] = useState<[number, number][]>([]);
 
-const [routeGeometry, setRouteGeometry] =
-  useState<[number, number][]>([]);
+  const [routeGeometry, setRouteGeometry] = useState<[number, number][]>([]);
 
-const [distance, setDistance] =
-  useState(0);
+  const [distance, setDistance] = useState(0);
 
-  const [selectedRoute, setSelectedRoute] =
-  useState<[number, number][]>([]);
+  const [selectedRoute, setSelectedRoute] = useState<[number, number][]>([]);
 
   const [routeName, setRouteName] = useState("");
 
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
 
-const calculateRoute = async () => {
-  try {
-    const result = await getWalkingRoute(
-      pathPoints as [number, number][]
-    );
+  const calculateRoute = async () => {
+    try {
+      const result = await getWalkingRoute(pathPoints as [number, number][]);
 
-    setRouteGeometry(result.geometry);
-    setDistance(result.distanceMiles);
+      setRouteGeometry(result.geometry);
+      setDistance(result.distanceMiles);
 
-    return result;
-
-  } catch(error) {
-    console.error(error);
-    alert("Could not calculate walking route");
-  }
-};
+      return result;
+    } catch (error) {
+      console.error(error);
+      alert("Could not calculate walking route");
+    }
+  };
 
   /*
    * Load saved routes from backend
@@ -84,8 +77,8 @@ const calculateRoute = async () => {
       const token = localStorage.getItem("idToken");
 
       const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/api/routes/my-routes`,
-    {
+        `${import.meta.env.VITE_API_URL}/api/routes/my-routes`,
+        {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -104,15 +97,23 @@ const calculateRoute = async () => {
     loadRoutes();
   }, []);
 
+  useEffect(() => {
+    if (pathPoints.length < 2) {
+      setRouteGeometry([]);
+      setDistance(0);
+      return;
+    }
+
+    calculateRoute();
+  }, [pathPoints]);
+
   /*
    * Save route to backend
    */
-  const saveRoute = async (
-  routeData: {
+  const saveRoute = async (routeData: {
     geometry: [number, number][];
     distanceMiles: number;
-  }
-) => {
+  }) => {
     if (routeName.trim() === "" || pathPoints.length < 2) {
       alert("Add at least 2 points and a name");
 
@@ -121,31 +122,25 @@ const calculateRoute = async () => {
 
     const token = localStorage.getItem("idToken");
 
-    const waypoints = routeData.geometry.map(
-  ([lat, lng]) => [
-    lng,
-    lat
-  ]
-);
+    const waypoints = routeData.geometry.map(([lat, lng]) => [lng, lat]);
 
     const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/api/routes/save`,
-    {
-      method: "POST",
+      `${import.meta.env.VITE_API_URL}/api/routes/save`,
+      {
+        method: "POST",
 
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
 
-      body: JSON.stringify({
-        routeName,
-
-        distanceMiles: distance,
-
-        waypoints,
-      }),
-    });
+        body: JSON.stringify({
+          routeName,
+          distanceMiles: routeData.distanceMiles,
+          waypoints,
+        }),
+      }
+    );
 
     if (response.ok) {
       alert("Route saved");
@@ -233,11 +228,7 @@ const calculateRoute = async () => {
               }}
             />
 
-            {routeGeometry.length > 0 && (
-  <Polyline
-    positions={routeGeometry}
-  />
-)}
+            {routeGeometry.length > 0 && <Polyline positions={routeGeometry} />}
 
             {selectedRoute.length > 0 && <Polyline positions={selectedRoute} />}
 
@@ -327,15 +318,12 @@ const calculateRoute = async () => {
                 />
 
                 <button
-                  onClick={async () => {
-
-  const routeData = await calculateRoute();
-
-  if (!routeData) return;
-
-  await saveRoute(routeData);
-
-}}
+                  onClick={() => {
+                    saveRoute({
+                      geometry: routeGeometry,
+                      distanceMiles: distance,
+                    });
+                  }}
 
                   className="
                     w-full rounded-xl
@@ -390,10 +378,10 @@ const calculateRoute = async () => {
 
                     onClick={() => {
                       const points = route.waypoints.map(
-  ([lng, lat]) => [lat, lng] as [number, number]
-);
+                        ([lng, lat]) => [lat, lng] as [number, number]
+                      );
 
-setSelectedRoute(points);
+                      setSelectedRoute(points);
 
                       setSelectedRoute(points);
                     }}
