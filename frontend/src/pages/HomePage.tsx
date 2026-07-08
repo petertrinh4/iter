@@ -412,7 +412,7 @@ setSelectedRoute(points);
                     <h4 className="font-semibold">{route.routeName}</h4>
 
                     <p className="text-sm text-muted-foreground">
-                      {route.distanceMiles} miles
+                      {route.distanceMiles.toFixed(2)} miles
                     </p>
 
                     <p className="text-xs text-muted-foreground">
