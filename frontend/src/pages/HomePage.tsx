@@ -70,6 +70,9 @@ export function HomePage() {
 
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
 
+  const [selectedSavedRoute, setSelectedSavedRoute] =
+    useState<SavedRoute | null>(null);
+
   const calculateRoute = async () => {
     try {
       const result = await getWalkingRoute(pathPoints as [number, number][]);
@@ -111,6 +114,39 @@ export function HomePage() {
   useEffect(() => {
     loadRoutes();
   }, []);
+
+  const deleteRoute = async () => {
+    if (!selectedSavedRoute) return;
+
+    const confirmed = window.confirm(
+      `Delete "${selectedSavedRoute.routeName}"?`
+    );
+
+    if (!confirmed) return;
+
+    const token = localStorage.getItem("idToken");
+
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/routes/${selectedSavedRoute._id}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (response.ok) {
+      alert("Route deleted");
+
+      setSelectedSavedRoute(null);
+      setSelectedRoute([]);
+
+      loadRoutes();
+    } else {
+      alert("Failed to delete route");
+    }
+  };
 
   useEffect(() => {
     if (pathPoints.length < 2) {
@@ -410,11 +446,7 @@ export function HomePage() {
                         ([lng, lat]) => [lat, lng] as [number, number]
                       );
 
-                      // Hide any route currently being created
-                      setRouteGeometry([]);
-                      setPathPoints([]);
-
-                      // Show the saved route
+                      setSelectedSavedRoute(route);
                       setSelectedRoute(points);
                     }}
 
@@ -440,6 +472,23 @@ export function HomePage() {
                     </p>
                   </button>
                 ))}
+                {selectedSavedRoute && (
+                  <button
+                    onClick={deleteRoute}
+                    className="
+      w-full
+      rounded-xl
+      bg-red-500
+      px-4
+      py-3
+      font-semibold
+      text-white
+      hover:bg-red-600
+    "
+                  >
+                    Delete Path
+                  </button>
+                )}
               </div>
             )}
 
