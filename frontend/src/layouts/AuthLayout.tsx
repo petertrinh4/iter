@@ -16,8 +16,7 @@ export function AuthLayout() {
       style={{ background: isDark ? "#231f19" : "#d8d0c0" }}
     >
       <DarkModeToggle />
-
-      <div className="w-full max-w-5xl flex rounded-3xl overflow-hidden shadow-2xl">
+      <main className="w-full max-w-6xl flex rounded-3xl overflow-hidden shadow-2xl">
         <AuthFormPanel
           isLogin={isLogin}
           isDark={isDark}
@@ -27,7 +26,7 @@ export function AuthLayout() {
         </AuthFormPanel>
 
         <MarketingPanel isLogin={isLogin} />
-      </div>
+      </main>
     </div>
   );
 }

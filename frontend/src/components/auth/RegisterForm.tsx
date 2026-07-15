@@ -69,6 +69,8 @@ export function RegisterForm() {
     }
   };
 
+  const formBg = isDark ? "#36312a" : "#EDE7D9";
+
   return (
     <Card className="shadow-none border-0 bg-transparent rounded-none w-full">
       <CardHeader className="text-center pb-8 pt-2">
@@ -79,7 +81,7 @@ export function RegisterForm() {
         >
           <CardTitle
             className="text-3xl font-bold"
-            style={{ color: brandColors.accent }}
+            style={{ color: isDark ? brandColors.accent : brandColors.accentText }}
           >
             Create Account
           </CardTitle>
@@ -156,13 +158,13 @@ export function RegisterForm() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="pl-10 pr-10 h-11"
+                className="pl-10 pr-12 h-11"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                className="absolute right-0 top-0 h-11 w-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -180,13 +182,13 @@ export function RegisterForm() {
                 placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="pl-10 pr-10 h-11"
+                className="pl-10 pr-12 h-11"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                className="absolute right-0 top-0 h-11 w-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
                 aria-label={showConfirmPassword ? "Hide password" : "Show password"}
               >
                 {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -199,7 +201,7 @@ export function RegisterForm() {
           <Button
             type="submit"
             className="w-full h-11 text-sm font-semibold shadow-lg hover:shadow-xl transition-all duration-300 group"
-            style={{ background: brandColors.accent, color: brandColors.dark }}
+            style={{ background: brandColors.accent, color: "#1a1611" }}
           >
             Create Account
             <ArrowRight className="ml-2 size-4 group-hover:translate-x-1 transition-transform" />
@@ -212,7 +214,7 @@ export function RegisterForm() {
             <div className="relative flex justify-center text-xs uppercase">
               <span
                 className="px-2 text-muted-foreground transition-colors duration-500"
-                style={{ background: isDark ? "#36312a" : "#EDE7D9" }}
+                style={{ background: formBg }}
               >
                 Already have an account?
               </span>
@@ -225,7 +227,7 @@ export function RegisterForm() {
             className="w-full h-11 border-2 transition-all duration-300"
             style={{
               borderColor: brandColors.accent,
-              color: brandColors.accent,
+              color: isDark ? brandColors.accent : brandColors.accentText,
             }}
             asChild
           >
