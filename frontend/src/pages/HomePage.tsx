@@ -6,6 +6,7 @@ import {
   Popup,
   Polyline,
   useMapEvents,
+  useMap,
 } from "react-leaflet";
 import { Plus, Route, CalendarDays } from "lucide-react";
 import { getWalkingRoute } from "../services/routing";
@@ -38,6 +39,20 @@ function PathDrawer({
   return null;
 }
 
+function ZoomToRoute({ route }: { route: [number, number][] }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (route.length === 0) return;
+
+    map.fitBounds(route, {
+      padding: [40, 40],
+    });
+  }, [route, map]);
+
+  return null;
+}
+
 export function HomePage() {
   const [activePanel, setActivePanel] = useState<Panel>("create");
 
@@ -54,6 +69,9 @@ export function HomePage() {
   const [routeName, setRouteName] = useState("");
 
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
+
+  const [selectedSavedRoute, setSelectedSavedRoute] =
+    useState<SavedRoute | null>(null);
 
   const calculateRoute = async () => {
     try {
@@ -96,6 +114,39 @@ export function HomePage() {
   useEffect(() => {
     loadRoutes();
   }, []);
+
+  const deleteRoute = async () => {
+    if (!selectedSavedRoute) return;
+
+    const confirmed = window.confirm(
+      `Delete "${selectedSavedRoute.routeName}"?`
+    );
+
+    if (!confirmed) return;
+
+    const token = localStorage.getItem("idToken");
+
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/routes/${selectedSavedRoute._id}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (response.ok) {
+      alert("Route deleted");
+
+      setSelectedSavedRoute(null);
+      setSelectedRoute([]);
+
+      loadRoutes();
+    } else {
+      alert("Failed to delete route");
+    }
+  };
 
   useEffect(() => {
     if (pathPoints.length < 2) {
@@ -223,9 +274,16 @@ export function HomePage() {
             <PathDrawer
               onAddPoint={(point) => {
                 if (activePanel === "create") {
+                  // Hide any previously selected saved route
+                  setSelectedRoute([]);
+
                   setPathPoints((prev) => [...prev, point]);
                 }
               }}
+            />
+
+            <ZoomToRoute
+              route={selectedRoute.length > 0 ? selectedRoute : routeGeometry}
             />
 
             {routeGeometry.length > 0 && <Polyline positions={routeGeometry} />}
@@ -256,7 +314,12 @@ export function HomePage() {
           {/* Navigation */}
           <div className="space-y-3 p-5">
             <button
-              onClick={() => setActivePanel("create")}
+              onClick={() => {
+                setActivePanel("create");
+
+                // Hide the previously selected saved route
+                setSelectedRoute([]);
+              }}
               className={`flex w-full items-center gap-3 rounded-xl border p-4 transition ${
                 activePanel === "create"
                   ? "border-primary bg-accent text-accent-foreground"
@@ -280,7 +343,10 @@ export function HomePage() {
             </button>
 
             <button
-              onClick={() => setActivePanel("calendar")}
+              onClick={() => {
+                setActivePanel("calendar");
+                setSelectedRoute([]);
+              }}
               className={`flex w-full items-center gap-3 rounded-xl border p-4 transition ${
                 activePanel === "calendar"
                   ? "border-primary bg-accent text-accent-foreground"
@@ -375,14 +441,12 @@ export function HomePage() {
                 {savedRoutes.map((route) => (
                   <button
                     key={route._id}
-
                     onClick={() => {
                       const points = route.waypoints.map(
                         ([lng, lat]) => [lat, lng] as [number, number]
                       );
 
-                      setSelectedRoute(points);
-
+                      setSelectedSavedRoute(route);
                       setSelectedRoute(points);
                     }}
 
@@ -408,6 +472,23 @@ export function HomePage() {
                     </p>
                   </button>
                 ))}
+                {selectedSavedRoute && (
+                  <button
+                    onClick={deleteRoute}
+                    className="
+      w-full
+      rounded-xl
+      bg-red-500
+      px-4
+      py-3
+      font-semibold
+      text-white
+      hover:bg-red-600
+    "
+                  >
+                    Delete Path
+                  </button>
+                )}
               </div>
             )}
 

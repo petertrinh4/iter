@@ -7,6 +7,7 @@ import { VerifyPage } from "./pages/VerifyPage";
 import { HomePage } from "./pages/HomePage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
+import "leaflet/dist/leaflet.css";
 
 export default function App() {
   return (

@@ -1,4 +1,4 @@
-import { Shield, Users, Zap, type LucideIcon } from "lucide-react";
+import { MapPin, Bookmark, CalendarDays, type LucideIcon } from "lucide-react";
 
 export interface Feature {
   icon: LucideIcon;
@@ -6,42 +6,30 @@ export interface Feature {
   description: string;
 }
 
-export interface Testimonial {
-  quote: string;
-  author: string;
-  role: string;
-  avatar: string;
-}
-
 export const features: Feature[] = [
   {
-    icon: Zap,
-    title: "Lightning Fast",
-    description: "Built for speed and performance at every scale.",
+    icon: MapPin,
+    title: "Plan Routes Anywhere",
+    description: "Draw custom paths on any street, trail, or campus worldwide.",
   },
   {
-    icon: Shield,
-    title: "Secure by Default",
-    description: "Enterprise-grade security protecting your data.",
+    icon: Bookmark,
+    title: "Save & Reuse Routes",
+    description:
+      "Name and store your favorite routes so you never have to re-draw them.",
   },
   {
-    icon: Users,
-    title: "Built for Teams",
-    description: "Collaborate seamlessly with your entire organization.",
+    icon: CalendarDays,
+    title: "Track Your Consistency",
+    description:
+      "A built-in calendar logs your activity history so you can see your habits grow over time.",
   },
 ];
 
-export const testimonial: Testimonial = {
-  quote:
-    "This platform transformed the way our team works. We ship faster and sleep better.",
-  author: "Sarah Chen",
-  role: "CTO at Horizon Labs",
-  avatar: "SC",
-};
-
 export const brandColors = {
-  accent: "#D5A021",
-  dark: "#4B4237",
-  light: "#EDE7D9",
-  muted: "#A49694",
+  accent:     "#D5A021",  // amber — use on dark backgrounds only (marketing panel)
+  accentText: "#6B4F0A",  // dark amber — WCAG AA on light bg (6.2:1)
+  dark:       "#4B4237",
+  light:      "#EDE7D9",
+  muted:      "#A49694",
 } as const;
