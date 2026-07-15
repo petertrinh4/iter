@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { motion } from "motion/react";
-import { ArrowRight, KeyRound, Mail, RotateCcw } from "lucide-react";
+import { ArrowRight, KeyRound, Mail, RotateCcw, XCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -18,6 +18,30 @@ import { brandColors } from "../constants/marketing";
 import { useTheme } from "../hooks/use-theme";
 
 const API_BASE = import.meta.env.VITE_API_URL;
+
+function mapVerifyError(raw: string): string {
+  const msg = raw.toLowerCase();
+  if (msg.includes("codemismatch") || msg.includes("invalid verification code") || msg.includes("invalid code"))
+    return "Incorrect code. Please check your email and try again.";
+  if (msg.includes("expiredcode") || msg.includes("code has expired") || msg.includes("expired"))
+    return "This code has expired. Click \"Resend Code\" to get a new one.";
+  if (msg.includes("toomanyrequests") || msg.includes("too many") || msg.includes("limit exceeded"))
+    return "Too many attempts. Please wait a moment and try again.";
+  if (msg.includes("notauthorized") || msg.includes("already confirmed"))
+    return "This account is already verified. Try signing in.";
+  return raw;
+}
+
+function mapResendError(raw: string): string {
+  const msg = raw.toLowerCase();
+  if (msg.includes("toomanyrequests") || msg.includes("too many") || msg.includes("limit exceeded"))
+    return "Too many resend attempts. Please wait a moment and try again.";
+  if (msg.includes("usernotfound") || msg.includes("user does not exist"))
+    return "No account found with this email.";
+  if (msg.includes("notauthorized") || msg.includes("already confirmed"))
+    return "This account is already verified. Try signing in.";
+  return raw;
+}
 
 export function VerifyPage() {
   const navigate = useNavigate();
@@ -36,9 +60,7 @@ export function VerifyPage() {
   const [resendSent, setResendSent] = useState(false);
 
   useEffect(() => {
-    if (!email) {
-      navigate("/register");
-    }
+    if (!email) navigate("/register");
   }, [email, navigate]);
 
   const handleVerify = async (e: React.FormEvent) => {
@@ -57,14 +79,23 @@ export function VerifyPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.message || "Verification failed");
+        const raw = data.message || data.error || "Verification failed.";
+        const lower = raw.toLowerCase();
+
+        // Already confirmed — just send to login
+        if (lower.includes("already confirmed") || lower.includes("notauthorized")) {
+          navigate("/login");
+          return;
+        }
+
+        setError(mapVerifyError(raw));
         return;
       }
 
-      setSuccess("Email verified successfully!");
+      setSuccess("Email verified successfully! Redirecting to sign in…");
       setTimeout(() => navigate("/login"), 1500);
     } catch {
-      setError("Could not connect to server");
+      setError("Could not connect to the server. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -86,10 +117,10 @@ export function VerifyPage() {
         setResendSent(true);
       } else {
         const data = await res.json();
-        setError(data.message || "Could not resend code");
+        setError(mapResendError(data.message || data.error || "Could not resend code."));
       }
     } catch {
-      setError("Could not connect to server");
+      setError("Could not connect to the server. Check your connection and try again.");
     } finally {
       setResendLoading(false);
     }
@@ -141,37 +172,40 @@ export function VerifyPage() {
             <CardContent className="flex flex-col gap-5 px-8">
               {error && (
                 <div
-                  className="rounded-lg px-4 py-2.5 text-sm border"
+                  className="rounded-lg px-4 py-2.5 text-sm border flex items-start gap-2"
                   style={{
                     background: "rgba(192,57,43,0.1)",
                     borderColor: "rgba(192,57,43,0.3)",
                     color: "#c0392b",
                   }}
                 >
+                  <XCircle className="size-4 mt-0.5 shrink-0" />
                   {error}
                 </div>
               )}
               {success && (
                 <div
-                  className="rounded-lg px-4 py-2.5 text-sm border"
+                  className="rounded-lg px-4 py-2.5 text-sm border flex items-start gap-2"
                   style={{
                     background: "rgba(39,174,96,0.1)",
                     borderColor: "rgba(39,174,96,0.3)",
                     color: "#27ae60",
                   }}
                 >
+                  <CheckCircle2 className="size-4 mt-0.5 shrink-0" />
                   {success}
                 </div>
               )}
               {resendSent && !error && (
                 <div
-                  className="rounded-lg px-4 py-2.5 text-sm border"
+                  className="rounded-lg px-4 py-2.5 text-sm border flex items-start gap-2"
                   style={{
                     background: "rgba(213,160,33,0.1)",
                     borderColor: "rgba(213,160,33,0.3)",
                     color: isDark ? brandColors.accent : brandColors.accentText,
                   }}
                 >
+                  <CheckCircle2 className="size-4 mt-0.5 shrink-0" />
                   A new code has been sent to your email.
                 </div>
               )}
@@ -202,11 +236,11 @@ export function VerifyPage() {
                 className="w-full h-11 text-sm font-semibold shadow-lg hover:shadow-xl transition-all duration-300 group"
                 style={{
                   background: brandColors.accent,
-                  color: brandColors.dark,
+                  color: "#1a1611",
                   opacity: loading ? 0.7 : 1,
                 }}
               >
-                {loading ? "Verifying..." : "Verify Email"}
+                {loading ? "Verifying…" : "Verify Email"}
                 {!loading && (
                   <ArrowRight className="ml-2 size-4 group-hover:translate-x-1 transition-transform" />
                 )}
@@ -239,7 +273,7 @@ export function VerifyPage() {
                 }}
               >
                 <RotateCcw className="size-4" />
-                {resendLoading ? "Sending..." : "Resend Code"}
+                {resendLoading ? "Sending…" : "Resend Code"}
               </Button>
 
               <button
