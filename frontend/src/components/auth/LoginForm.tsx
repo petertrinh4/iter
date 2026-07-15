@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { motion } from "motion/react";
-import { ArrowRight, Lock, Mail, Eye, EyeOff } from "lucide-react";
+import { ArrowRight, Lock, Mail, Eye, EyeOff, XCircle } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -17,34 +17,57 @@ import { brandColors } from "../../constants/marketing";
 import { useTheme } from "../../hooks/use-theme";
 import { useNavigate } from "react-router";
 
+function mapLoginError(raw: string): string {
+  const msg = raw.toLowerCase();
+  if (msg.includes("notauthorized") || msg.includes("incorrect username or password") || msg.includes("incorrect"))
+    return "Incorrect email or password. Please try again.";
+  if (msg.includes("usernotfound") || msg.includes("user does not exist"))
+    return "No account found with this email. Did you mean to sign up?";
+  if (msg.includes("usernotconfirmed") || msg.includes("not confirmed"))
+    return "Your email hasn't been verified yet. Check your inbox for a verification code.";
+  if (msg.includes("toomanyrequests") || msg.includes("too many"))
+    return "Too many attempts. Please wait a moment and try again.";
+  if (msg.includes("network") || msg.includes("fetch"))
+    return "Could not connect to the server. Check your connection and try again.";
+  return raw;
+}
+
 export function LoginForm() {
   const { isDark } = useTheme();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const API_BASE = import.meta.env.VITE_API_URL;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
 
     try {
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          password,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.message || "Login failed");
+        const raw = data.message || data.error || "Login failed.";
+        const lower = raw.toLowerCase();
+
+        // Unconfirmed account — redirect to verify
+        if (lower.includes("usernotconfirmed") || lower.includes("not confirmed")) {
+          navigate("/verify", { state: { email } });
+          return;
+        }
+
+        setError(mapLoginError(raw));
         return;
       }
 
@@ -55,9 +78,10 @@ export function LoginForm() {
       console.log("Login success:", data);
 
       navigate("/home");
-    } catch (err) {
-      console.error(err);
-      alert("Server error");
+    } catch (_err) {
+      setError("Could not connect to the server. Check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -85,6 +109,20 @@ export function LoginForm() {
 
       <form onSubmit={handleSubmit}>
         <CardContent className="flex flex-col gap-6 px-6">
+          {error && (
+            <div
+              className="rounded-lg px-4 py-2.5 text-sm border flex items-start gap-2"
+              style={{
+                background: "rgba(192,57,43,0.1)",
+                borderColor: "rgba(192,57,43,0.3)",
+                color: "#c0392b",
+              }}
+            >
+              <XCircle className="size-4 mt-0.5 shrink-0" />
+              {error}
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <div className="relative">
@@ -140,11 +178,12 @@ export function LoginForm() {
         <CardFooter className="flex flex-col gap-4 px-6 pt-6 pb-4">
           <Button
             type="submit"
+            disabled={loading}
             className="w-full h-11 text-sm font-semibold shadow-lg hover:shadow-xl transition-all duration-300 group"
-            style={{ background: brandColors.accent, color: "#1a1611" }}
+            style={{ background: brandColors.accent, color: "#1a1611", opacity: loading ? 0.7 : 1 }}
           >
-            Sign In
-            <ArrowRight className="ml-2 size-4 group-hover:translate-x-1 transition-transform" />
+            {loading ? "Signing in…" : "Sign In"}
+            {!loading && <ArrowRight className="ml-2 size-4 group-hover:translate-x-1 transition-transform" />}
           </Button>
 
           <div className="relative w-full">

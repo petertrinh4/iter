@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { motion } from "motion/react";
-import { Mail, ArrowRight, Lock } from "lucide-react";
+import { Mail, ArrowRight, Lock, XCircle } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -17,6 +17,17 @@ import { brandColors } from "../constants/marketing";
 import { useTheme } from "../hooks/use-theme";
 
 const API_BASE = import.meta.env.VITE_API_URL;
+
+function mapForgotError(raw: string): string {
+  const msg = raw.toLowerCase();
+  if (msg.includes("usernotfound") || msg.includes("user does not exist") || msg.includes("username/client id combination"))
+    return "No account found with this email address.";
+  if (msg.includes("toomanyrequests") || msg.includes("too many") || msg.includes("limit exceeded"))
+    return "Too many attempts. Please wait a moment and try again.";
+  if (msg.includes("invalidparameter") || msg.includes("invalid email"))
+    return "Please enter a valid email address.";
+  return raw;
+}
 
 export function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -41,13 +52,13 @@ export function ForgotPasswordPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.message || "Unable to send reset code");
+        setError(mapForgotError(data.message || data.error || "Unable to send reset code."));
         return;
       }
 
       navigate("/reset-password", { state: { email } });
     } catch {
-      setError("Could not connect to server");
+      setError("Could not connect to the server. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -93,13 +104,14 @@ export function ForgotPasswordPage() {
             <CardContent className="flex flex-col gap-5 px-8">
               {error && (
                 <div
-                  className="rounded-lg px-4 py-2.5 text-sm border"
+                  className="rounded-lg px-4 py-2.5 text-sm border flex items-start gap-2"
                   style={{
                     background: "rgba(192,57,43,0.1)",
                     borderColor: "rgba(192,57,43,0.3)",
                     color: "#c0392b",
                   }}
                 >
+                  <XCircle className="size-4 mt-0.5 shrink-0" />
                   {error}
                 </div>
               )}
@@ -128,11 +140,11 @@ export function ForgotPasswordPage() {
                 className="w-full h-11 text-sm font-semibold shadow-lg hover:shadow-xl transition-all duration-300 group"
                 style={{
                   background: brandColors.accent,
-                  color: brandColors.dark,
+                  color: "#1a1611",
                   opacity: loading ? 0.7 : 1,
                 }}
               >
-                {loading ? "Sending..." : "Send Reset Code"}
+                {loading ? "Sending…" : "Send Reset Code"}
                 {!loading && (
                   <ArrowRight className="ml-2 size-4 group-hover:translate-x-1 transition-transform" />
                 )}
