@@ -8,8 +8,9 @@ import {
   useMapEvents,
   useMap,
 } from "react-leaflet";
-import { Plus, Route, CalendarDays } from "lucide-react";
+import { Plus, Route, CalendarDays, Moon, Sun } from "lucide-react";
 import { getWalkingRoute } from "../services/routing";
+import { useTheme } from "../hooks/use-theme";
 
 type Panel = "create" | "saved" | "calendar";
 
@@ -72,6 +73,8 @@ export function HomePage() {
 
   const [selectedSavedRoute, setSelectedSavedRoute] =
     useState<SavedRoute | null>(null);
+
+  const { isDark, toggleTheme } = useTheme();
 
   const calculateRoute = async () => {
     try {
@@ -303,12 +306,29 @@ export function HomePage() {
         {/* SIDEBAR */}
         <aside className="flex w-80 flex-col border-l border-sidebar-border bg-card">
           {/* Header */}
-          <div className="border-b border-sidebar-border p-6">
-            <h2 className="text-xl font-semibold">Dashboard</h2>
+          <div className="flex items-start justify-between border-b border-sidebar-border p-6">
+            <div>
+              <h2 className="text-xl font-semibold">Dashboard</h2>
 
-            <p className="mt-1 text-sm text-muted-foreground">
-              Route planning tools
-            </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Route planning tools
+              </p>
+            </div>
+
+            <button
+              onClick={toggleTheme}
+              className="
+      rounded-lg
+      border
+      border-border
+      p-2
+      transition
+      hover:bg-muted
+    "
+              aria-label="Toggle theme"
+            >
+              {isDark ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
           </div>
 
           {/* Navigation */}
