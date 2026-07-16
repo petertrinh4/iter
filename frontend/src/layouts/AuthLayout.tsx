@@ -1,6 +1,5 @@
 import { Outlet, useLocation } from "react-router";
 import { DarkModeToggle } from "../components/DarkModeToggle";
-import { AuthFooter } from "../components/auth/AuthFooter";
 import { AuthFormPanel } from "../components/auth/AuthFormPanel";
 import { MarketingPanel } from "../components/marketing/MarketingPanel";
 import { useTheme } from "../hooks/use-theme";
@@ -20,7 +19,6 @@ export function AuthLayout() {
         <AuthFormPanel
           isLogin={isLogin}
           isDark={isDark}
-          footer={<AuthFooter />}
         >
           <Outlet />
         </AuthFormPanel>
