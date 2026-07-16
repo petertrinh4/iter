@@ -17,19 +17,14 @@ import { brandColors } from "../../constants/marketing";
 import { useTheme } from "../../hooks/use-theme";
 import { useNavigate } from "react-router";
 
-function mapLoginError(raw: string): string {
-  const msg = raw.toLowerCase();
-  if (msg.includes("notauthorized") || msg.includes("incorrect username or password") || msg.includes("incorrect"))
+function mapLoginError(code: string, message: string): string {
+  if (code === "NotAuthorizedException" || message.includes("incorrect username or password"))
     return "Incorrect email or password. Please try again.";
-  if (msg.includes("usernotfound") || msg.includes("user does not exist"))
+  if (code === "UserNotFoundException" || message.includes("user does not exist"))
     return "No account found with this email. Did you mean to sign up?";
-  if (msg.includes("usernotconfirmed") || msg.includes("not confirmed"))
-    return "Your email hasn't been verified yet. Check your inbox for a verification code.";
-  if (msg.includes("toomanyrequests") || msg.includes("too many"))
+  if (message.includes("toomanyrequests") || message.includes("too many"))
     return "Too many attempts. Please wait a moment and try again.";
-  if (msg.includes("network") || msg.includes("fetch"))
-    return "Could not connect to the server. Check your connection and try again.";
-  return raw;
+  return "Login failed. Please try again.";
 }
 
 export function LoginForm() {
@@ -61,9 +56,10 @@ export function LoginForm() {
         const raw = data.message || data.error || "Login failed.";
         const lower = raw.toLowerCase();
 
-        // Unconfirmed account — redirect to verify
-        if (lower.includes("usernotconfirmed") || lower.includes("not confirmed")) {
-          navigate("/verify", { state: { email } });
+        // Backend returns same message for wrong password and unconfirmed account
+        // Until backend distinguishes them, show a neutral message covering both
+        if (lower.includes("not confirmed") || lower.includes("invalid credentials or user not confirmed")) {
+          setError("Incorrect email or password. If you haven't verified your email yet, check your inbox for a verification code.");
           return;
         }
 
