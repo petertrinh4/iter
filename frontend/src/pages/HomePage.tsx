@@ -372,8 +372,11 @@ export function HomePage() {
                 </div>
 
                 <div className="rounded-xl border border-border bg-muted/20 p-4">
-                  Points Added:
-                  <span className="ml-2 font-bold">{pathPoints.length}</span>
+                  <p className="text-xs text-muted-foreground">Distance</p>
+
+                  <p className="mt-1 text-2xl font-bold">
+                    {distance.toFixed(2)} mi
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -493,10 +496,6 @@ export function HomePage() {
 
                     <p className="text-sm text-muted-foreground">
                       {route.distanceMiles.toFixed(2)} miles
-                    </p>
-
-                    <p className="text-xs text-muted-foreground">
-                      {route.waypoints.length} points
                     </p>
                   </button>
                 ))}
