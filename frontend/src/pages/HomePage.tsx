@@ -278,7 +278,7 @@ export function HomePage() {
               url={
                 isDark
                   ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                  : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                  : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               }
             />
 
@@ -302,7 +302,21 @@ export function HomePage() {
             {selectedRoute.length > 0 && <Polyline positions={selectedRoute} />}
 
             {pathPoints.map((point, index) => (
-              <Marker key={index} position={point} />
+              <Marker
+                key={index}
+                position={point}
+                eventHandlers={{
+                  click: () => {
+                    if (window.confirm(`Delete point ${index + 1}?`)) {
+                      setPathPoints((prev) =>
+                        prev.filter((_, i) => i !== index)
+                      );
+                    }
+                  },
+                }}
+              >
+                <Popup>Delete this point</Popup>
+              </Marker>
             ))}
 
             <Marker position={[28.6024, -81.2001]}>
@@ -460,6 +474,27 @@ export function HomePage() {
                   "
                 >
                   Save Path
+                </button>
+
+                <button
+                  onClick={() => {
+                    setPathPoints((prev) => prev.slice(0, -1));
+                  }}
+                  disabled={pathPoints.length === 0}
+                  className="
+    w-full
+    rounded-xl
+    border
+    border-border
+    px-4
+    py-3
+    font-semibold
+    hover:bg-muted
+    disabled:cursor-not-allowed
+    disabled:opacity-50
+  "
+                >
+                  Undo Last Point
                 </button>
 
                 <button
