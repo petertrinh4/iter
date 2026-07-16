@@ -63,7 +63,7 @@ export function LoginForm() {
           return;
         }
 
-        setError(mapLoginError(raw));
+        setError(mapLoginError("", raw));
         return;
       }
 
