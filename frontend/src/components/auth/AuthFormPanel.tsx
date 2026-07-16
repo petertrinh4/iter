@@ -5,14 +5,14 @@ interface AuthFormPanelProps {
   isLogin: boolean;
   isDark: boolean;
   children: ReactNode;
-  footer?: ReactNode;
+  //footer?: ReactNode;
 }
 
 export function AuthFormPanel({
   isLogin,
   isDark,
   children,
-  footer,
+  //footer,
 }: AuthFormPanelProps) {
   return (
     <motion.div
@@ -33,7 +33,7 @@ export function AuthFormPanel({
             {children}
           </motion.div>
         </AnimatePresence>
-        {footer}
+        
       </div>
     </motion.div>
   );
