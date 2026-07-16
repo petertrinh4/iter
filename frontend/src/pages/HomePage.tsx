@@ -377,19 +377,19 @@ export function HomePage() {
                 </div>
 
                 <div className="space-y-2">
-  <label
-    htmlFor="routeName"
-    className="text-sm font-medium text-muted-foreground"
-  >
-    Route Name
-  </label>
+                  <label
+                    htmlFor="routeName"
+                    className="text-sm font-medium text-muted-foreground"
+                  >
+                    Route Name
+                  </label>
 
-  <input
-    id="routeName"
-    value={routeName}
-    onChange={(e) => setRouteName(e.target.value)}
-    placeholder="Morning Run"
-    className="
+                  <input
+                    id="routeName"
+                    value={routeName}
+                    onChange={(e) => setRouteName(e.target.value)}
+                    placeholder="Morning Run"
+                    className="
       w-full
       rounded-xl
       border
@@ -404,12 +404,12 @@ export function HomePage() {
       focus:ring-2
       focus:ring-green-500/20
     "
-  />
+                  />
 
-  <p className="text-xs text-muted-foreground">
-    Give your route a memorable name.
-  </p>
-</div>
+                  <p className="text-xs text-muted-foreground">
+                    Give your route a memorable name.
+                  </p>
+                </div>
 
                 <button
                   onClick={() => {
