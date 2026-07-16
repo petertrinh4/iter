@@ -270,8 +270,16 @@ export function HomePage() {
             className="h-full w-full"
           >
             <TileLayer
-              attribution="&copy; OpenStreetMap contributors"
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution={
+                isDark
+                  ? '&copy; <a href="https://carto.com/">CARTO</a>'
+                  : "&copy; OpenStreetMap contributors"
+              }
+              url={
+                isDark
+                  ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                  : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+              }
             />
 
             <PathDrawer
