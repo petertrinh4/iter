@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import CurrentLocationButton from "../components/CurrentLocationButton";
 import {
   MapContainer,
   TileLayer,
@@ -315,6 +316,7 @@ export function HomePage() {
             className="h-full w-full"
           >
             <FlyToUser location={userLocation} />
+            <CurrentLocationButton location={userLocation} />
             <TileLayer
               attribution={
                 isDark
