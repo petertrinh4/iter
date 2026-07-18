@@ -12,6 +12,20 @@ import { Plus, Route, CalendarDays, Moon, Sun } from "lucide-react";
 import { getWalkingRoute } from "../services/routing";
 import { useTheme } from "../hooks/use-theme";
 
+// ---- Leaflet setup (moved here so it only loads on /home) ----
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
+
 type Panel = "create" | "saved" | "calendar";
 
 type Run = {
