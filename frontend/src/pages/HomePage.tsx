@@ -68,6 +68,16 @@ function ZoomToRoute({ route }: { route: [number, number][] }) {
   return null;
 }
 
+function FlyToUser({ location }: { location: [number, number] }) {
+  const map = useMap();
+
+  useEffect(() => {
+    map.flyTo(location, 15);
+  }, [location, map]);
+
+  return null;
+}
+
 export function HomePage() {
   const [activePanel, setActivePanel] = useState<Panel>("create");
 
@@ -89,6 +99,11 @@ export function HomePage() {
     useState<SavedRoute | null>(null);
 
   const { isDark, toggleTheme } = useTheme();
+
+  const DEFAULT_LOCATION: [number, number] = [28.6024, -81.2001];
+
+  const [userLocation, setUserLocation] =
+    useState<[number, number]>(DEFAULT_LOCATION);
 
   const calculateRoute = async () => {
     try {
@@ -127,6 +142,22 @@ export function HomePage() {
       console.error("Failed loading routes:", error);
     }
   };
+
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation([position.coords.latitude, position.coords.longitude]);
+      },
+      () => {
+        console.log("Location permission denied.");
+      },
+      {
+        enableHighAccuracy: true,
+      }
+    );
+  }, []);
 
   useEffect(() => {
     loadRoutes();
@@ -278,11 +309,12 @@ export function HomePage() {
       <div className="flex h-full">
         <main className="flex-1">
           <MapContainer
-            center={[28.6024, -81.2001]}
+            center={userLocation}
             zoom={13}
             scrollWheelZoom
             className="h-full w-full"
           >
+            <FlyToUser location={userLocation} />
             <TileLayer
               attribution={
                 isDark
@@ -333,8 +365,8 @@ export function HomePage() {
               </Marker>
             ))}
 
-            <Marker position={[28.6024, -81.2001]}>
-              <Popup>Running App 🏃</Popup>
+            <Marker position={userLocation}>
+              <Popup>You are here 📍</Popup>
             </Marker>
           </MapContainer>
         </main>
