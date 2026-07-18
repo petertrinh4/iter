@@ -14,6 +14,9 @@ export default function CurrentLocationButton({
   useEffect(() => {
     const container = document.createElement("div");
 
+    L.DomEvent.disableClickPropagation(container);
+    L.DomEvent.disableScrollPropagation(container);
+
     const root = createRoot(container);
 
     root.render(
