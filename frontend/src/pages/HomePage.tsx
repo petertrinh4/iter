@@ -19,6 +19,7 @@ import L from "leaflet";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
+import { currentLocationIcon, routePointIcon } from "../components/icons";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -353,6 +354,7 @@ export function HomePage() {
               <Marker
                 key={index}
                 position={point}
+                icon={routePointIcon}
                 eventHandlers={{
                   click: () => {
                     if (window.confirm(`Delete point ${index + 1}?`)) {
@@ -362,13 +364,11 @@ export function HomePage() {
                     }
                   },
                 }}
-              >
-                <Popup>Delete this point</Popup>
-              </Marker>
+              ></Marker>
             ))}
 
-            <Marker position={userLocation}>
-              <Popup>You are here 📍</Popup>
+            <Marker position={userLocation} icon={currentLocationIcon}>
+              <Popup>Your Current Location</Popup>
             </Marker>
           </MapContainer>
         </main>
