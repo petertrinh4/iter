@@ -9,7 +9,7 @@ import {
   useMapEvents,
   useMap,
 } from "react-leaflet";
-import { Plus, Route, CalendarDays, Moon, Sun } from "lucide-react";
+import { Plus, Route, CalendarDays, Moon, Sun, User, ChevronLeft, LogOut } from "lucide-react";
 import { getWalkingRoute } from "../services/routing";
 import { useTheme } from "../hooks/use-theme";
 
@@ -27,7 +27,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-type Panel = "create" | "saved" | "calendar";
+type Panel = "paths" | "calendar" | "profile";
 
 type Run = {
   route: string;
@@ -80,7 +80,12 @@ function FlyToUser({ location }: { location: [number, number] }) {
 }
 
 export function HomePage() {
-  const [activePanel, setActivePanel] = useState<Panel>("create");
+  const [activePanel, setActivePanel] = useState<Panel | null>(null);
+  const [pathsTab, setPathsTab] = useState<"create" | "saved">("create");
+
+  // ── Profile state ──────────────────────────────────────────────
+  const [username, setUsername] = useState("");
+  const [memberSince, setMemberSince] = useState("");
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -163,6 +168,33 @@ export function HomePage() {
   useEffect(() => {
     loadRoutes();
   }, []);
+
+  // ── Read user info from the JWT already in localStorage ────────
+  useEffect(() => {
+    const token = localStorage.getItem("idToken");
+    if (!token) return;
+    try {
+      // JWT payload is the second base64url segment
+      const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+      // preferred_username is the human-readable username set at registration
+      setUsername(payload["preferred_username"] ?? payload["email"] ?? "User");
+      // "iat" (issued-at) is seconds since epoch — use as a proxy for account context
+      // If your backend stores a real createdAt, prefer that instead
+      if (payload["iat"]) {
+        const d = new Date(payload["iat"] * 1000);
+        setMemberSince(d.toLocaleDateString("en-US", { month: "long", year: "numeric" }));
+      }
+    } catch {
+      console.error("Could not decode idToken");
+    }
+  }, []);
+
+
+  const handleSignOut = () => {
+    localStorage.removeItem("idToken");
+    localStorage.removeItem("accessToken");
+    window.location.href = "/";
+  };
 
   const deleteRoute = async () => {
     if (!selectedSavedRoute) return;
@@ -332,7 +364,7 @@ export function HomePage() {
 
             <PathDrawer
               onAddPoint={(point) => {
-                if (activePanel === "create") {
+                if (activePanel === "paths" && pathsTab === "create") {
                   // Hide any previously selected saved route
                   setSelectedRoute([]);
 
@@ -373,363 +405,291 @@ export function HomePage() {
           </MapContainer>
         </main>
 
-        {/* SIDEBAR */}
-        <aside className="flex w-80 flex-col border-l border-sidebar-border bg-card">
-          {/* Header */}
-          <div className="flex items-start justify-between border-b border-sidebar-border p-6">
-            <div>
-              <h2 className="text-xl font-semibold">Dashboard</h2>
-
-              <p className="mt-1 text-sm text-muted-foreground">
-                Route planning tools
-              </p>
-            </div>
-
-            <button
-              onClick={toggleTheme}
-              className="
-      rounded-lg
-      border
-      border-border
-      p-2
-      transition
-      hover:bg-muted
-    "
-              aria-label="Toggle theme"
-            >
-              {isDark ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-          </div>
-
-          {/* Navigation */}
-          <div className="space-y-3 p-5">
-            <button
-              onClick={() => {
-                setActivePanel("create");
-
-                // Hide the previously selected saved route
-                setSelectedRoute([]);
-              }}
-              className={`flex w-full items-center gap-3 rounded-xl border p-4 transition ${
-                activePanel === "create"
-                  ? "border-primary bg-accent text-accent-foreground"
-                  : "border-border bg-muted/40 hover:bg-accent"
-              }`}
-            >
-              <Plus size={20} />
-              Create Path
-            </button>
-
-            <button
-              onClick={() => setActivePanel("saved")}
-              className={`flex w-full items-center gap-3 rounded-xl border p-4 transition ${
-                activePanel === "saved"
-                  ? "border-primary bg-accent text-accent-foreground"
-                  : "border-border bg-muted/40 hover:bg-accent"
-              }`}
-            >
-              <Route size={20} />
-              Saved Paths
-            </button>
-
-            <button
-              onClick={() => {
-                setActivePanel("calendar");
-                setSelectedRoute([]);
-              }}
-              className={`flex w-full items-center gap-3 rounded-xl border p-4 transition ${
-                activePanel === "calendar"
-                  ? "border-primary bg-accent text-accent-foreground"
-                  : "border-border bg-muted/40 hover:bg-accent"
-              }`}
-            >
-              <CalendarDays size={20} />
-              Calendar
-            </button>
-          </div>
-
-          {/* PANEL CONTENT */}
-          <div className="flex-1 overflow-y-auto border-t border-sidebar-border p-5">
-            {/* CREATE PATH */}
-            {activePanel === "create" && (
-              <div className="space-y-5">
-                <div>
-                  <h3 className="text-lg font-semibold">Create Path</h3>
-
-                  <p className="text-sm text-muted-foreground">
-                    Click on the map to create a route.
-                  </p>
-                </div>
-
-                <div className="rounded-xl border border-border bg-muted/20 p-4">
-                  <p className="text-xs text-muted-foreground">Distance</p>
-
-                  <p className="mt-1 text-2xl font-bold">
-                    {distance.toFixed(2)} mi
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <label
-                    htmlFor="routeName"
-                    className="text-sm font-medium text-muted-foreground"
-                  >
-                    Route Name
-                  </label>
-
-                  <input
-                    id="routeName"
-                    value={routeName}
-                    onChange={(e) => setRouteName(e.target.value)}
-                    placeholder="Morning Run"
-                    className="
-      w-full
-      rounded-xl
-      border
-      border-border
-      bg-background
-      px-4
-      py-3
-      transition
-      placeholder:text-muted-foreground
-      focus:border-green-500
-      focus:outline-none
-      focus:ring-2
-      focus:ring-green-500/20
-    "
-                  />
-
-                  <p className="text-xs text-muted-foreground">
-                    Give your route a memorable name.
-                  </p>
-                </div>
-
+        {/* SLIDE-OUT PANEL */}
+        <div
+          className={`flex flex-col overflow-hidden border-l border-sidebar-border bg-card transition-all duration-300 ease-in-out ${
+            activePanel ? "w-80" : "w-0"
+          }`}
+        >
+          {activePanel && (
+            <div className="flex h-full w-80 flex-col">
+              {/* Panel header */}
+              <div className="flex items-center justify-between border-b border-sidebar-border px-5 py-4">
+                <h2 className="text-base font-semibold tracking-wide">
+                  {activePanel === "paths" && "Paths"}
+                  {activePanel === "calendar" && "Calendar"}
+                  {activePanel === "profile" && "Profile"}
+                </h2>
                 <button
-                  onClick={() => {
-                    saveRoute({
-                      geometry: routeGeometry,
-                      distanceMiles: distance,
-                    });
-                  }}
-
-                  className="
-                    w-full rounded-xl
-                    bg-green-500
-                    px-4 py-3
-                    font-semibold
-                    text-black
-                    hover:opacity-90
-                  "
+                  onClick={() => setActivePanel(null)}
+                  className="rounded-lg p-1.5 transition hover:bg-muted"
+                  aria-label="Close panel"
                 >
-                  Save Path
-                </button>
-
-                <button
-                  onClick={() => {
-                    setPathPoints((prev) => prev.slice(0, -1));
-                  }}
-                  disabled={pathPoints.length === 0}
-                  className="
-    w-full
-    rounded-xl
-    border
-    border-border
-    px-4
-    py-3
-    font-semibold
-    hover:bg-muted
-    disabled:cursor-not-allowed
-    disabled:opacity-50
-  "
-                >
-                  Undo Last Point
-                </button>
-
-                <button
-                  onClick={() => {
-                    setPathPoints([]);
-                  }}
-
-                  className="
-                    w-full rounded-xl
-                    border border-border
-                    px-4 py-3
-                    hover:bg-muted
-                  "
-                >
-                  Clear Path
+                  <ChevronLeft size={18} />
                 </button>
               </div>
-            )}
 
-            {/* SAVED ROUTES */}
-            {activePanel === "saved" && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Saved Paths</h3>
+              {/* Panel body */}
+              <div className="flex-1 overflow-y-auto p-5">
 
-                {savedRoutes.length === 0 && (
-                  <div
-                    className="
-                    rounded-xl
-                    border border-dashed
-                    border-border
-                    p-4
-                  "
-                  >
-                    No saved routes.
-                  </div>
-                )}
-
-                {savedRoutes.map((route) => (
-                  <button
-                    key={route._id}
-                    onClick={() => {
-                      const points = route.waypoints.map(
-                        ([lng, lat]) => [lat, lng] as [number, number]
-                      );
-
-                      setSelectedSavedRoute(route);
-                      setSelectedRoute(points);
-                    }}
-
-                    className="
-                      w-full
-                      rounded-xl
-                      border border-border
-                      bg-muted/20
-                      p-4
-                      text-left
-                      transition
-                      hover:bg-accent
-                    "
-                  >
-                    <h4 className="font-semibold">{route.routeName}</h4>
-
-                    <p className="text-sm text-muted-foreground">
-                      {route.distanceMiles.toFixed(2)} miles
-                    </p>
-                  </button>
-                ))}
-                {selectedSavedRoute && (
-                  <button
-                    onClick={deleteRoute}
-                    className="
-      w-full
-      rounded-xl
-      bg-red-500
-      px-4
-      py-3
-      font-semibold
-      text-white
-      hover:bg-red-600
-    "
-                  >
-                    Delete Path
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* CALENDAR */}
-            {activePanel === "calendar" && (
-              <div className="space-y-5">
-                <div>
-                  <h3 className="text-lg font-semibold">
-                    {monthName} {year}
-                  </h3>
-
-                  <p className="text-sm text-muted-foreground">
-                    Running history
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-7 gap-2">
-                  {["S", "M", "T", "W", "T", "F", "S"].map((day) => (
-                    <div
-                      key={day}
-                      className="
-                        text-center
-                        text-xs
-                        text-muted-foreground
-                      "
-                    >
-                      {day}
-                    </div>
-                  ))}
-
-                  {calendarCells.map((day, index) => {
-                    if (!day) {
-                      return <div key={index} className="aspect-square" />;
-                    }
-
-                    const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-
-                    const run = runs[dateKey];
-
-                    return (
+                {/* ── PATHS ── */}
+                {activePanel === "paths" && (
+                  <div className="space-y-5">
+                    <div className="flex rounded-xl border border-border bg-muted/30 p-1">
                       <button
-                        key={dateKey}
-
-                        onClick={() => setSelectedDate(dateKey)}
-
-                        className={`
-                          aspect-square
-                          rounded-lg
-                          border
-                          text-sm
-
-                          ${
-                            run
-                              ? "border-green-500 bg-green-500/20 text-green-400"
-                              : "border-border bg-muted/30"
-                          }
-
-                        `}
+                        onClick={() => setPathsTab("create")}
+                        className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition ${
+                          pathsTab === "create" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground"
+                        }`}
                       >
-                        {day}
+                        <Plus size={15} /> Create
                       </button>
-                    );
-                  })}
-                </div>
+                      <button
+                        onClick={() => setPathsTab("saved")}
+                        className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition ${
+                          pathsTab === "saved" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <Route size={15} /> Saved
+                      </button>
+                    </div>
 
-                {selectedDate && (
-                  <div
-                    className="
-                    rounded-xl
-                    border border-border
-                    bg-muted/20
-                    p-4
-                  "
-                  >
-                    <h4 className="font-semibold">{selectedDate}</h4>
-
-                    {runs[selectedDate] ? (
-                      <div className="mt-3 text-sm space-y-2">
-                        <p>
-                          Route:
-                          <span className="ml-2">
-                            {runs[selectedDate].route}
-                          </span>
+                    {pathsTab === "create" && (
+                      <div className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                          Click on the map to place points and build a route.
                         </p>
-
-                        <p>
-                          Distance:
-                          <span className="ml-2">
-                            {runs[selectedDate].distance} mi
-                          </span>
-                        </p>
+                        <div className="rounded-xl border border-border bg-muted/20 p-4">
+                          <p className="text-xs text-muted-foreground">Distance</p>
+                          <p className="mt-1 text-2xl font-bold">{distance.toFixed(2)} mi</p>
+                        </div>
+                        <div className="space-y-2">
+                          <label htmlFor="routeName" className="text-sm font-medium text-muted-foreground">
+                            Route Name
+                          </label>
+                          <input
+                            id="routeName"
+                            value={routeName}
+                            onChange={(e) => setRouteName(e.target.value)}
+                            placeholder="Morning Run"
+                            className="w-full rounded-xl border border-border bg-background px-4 py-3 transition placeholder:text-muted-foreground focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20"
+                          />
+                        </div>
+                        <button
+                          onClick={() => saveRoute({ geometry: routeGeometry, distanceMiles: distance })}
+                          className="w-full rounded-xl bg-green-500 px-4 py-3 font-semibold text-black hover:opacity-90"
+                        >
+                          Save Path
+                        </button>
+                        <button
+                          onClick={() => setPathPoints((prev) => prev.slice(0, -1))}
+                          disabled={pathPoints.length === 0}
+                          className="w-full rounded-xl border border-border px-4 py-3 font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Undo Last Point
+                        </button>
+                        <button
+                          onClick={() => setPathPoints([])}
+                          className="w-full rounded-xl border border-border px-4 py-3 hover:bg-muted"
+                        >
+                          Clear Path
+                        </button>
                       </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground mt-3">
-                        No run recorded.
-                      </p>
+                    )}
+
+                    {pathsTab === "saved" && (
+                      <div className="space-y-4">
+                        {savedRoutes.length === 0 && (
+                          <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+                            No saved routes yet.
+                          </div>
+                        )}
+                        {savedRoutes.map((route) => (
+                          <button
+                            key={route._id}
+                            onClick={() => {
+                              const points = route.waypoints.map(([lng, lat]) => [lat, lng] as [number, number]);
+                              setSelectedSavedRoute(route);
+                              setSelectedRoute(points);
+                            }}
+                            className="w-full rounded-xl border border-border bg-muted/20 p-4 text-left transition hover:bg-accent"
+                          >
+                            <h4 className="font-semibold">{route.routeName}</h4>
+                            <p className="text-sm text-muted-foreground">{route.distanceMiles.toFixed(2)} miles</p>
+                          </button>
+                        ))}
+                        {selectedSavedRoute && (
+                          <button
+                            onClick={deleteRoute}
+                            className="w-full rounded-xl bg-red-500 px-4 py-3 font-semibold text-white hover:bg-red-600"
+                          >
+                            Delete Path
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
+
+                {/* ── CALENDAR ── */}
+                {activePanel === "calendar" && (
+                  <div className="space-y-5">
+                    <div>
+                      <h3 className="text-lg font-semibold">{monthName} {year}</h3>
+                      <p className="text-sm text-muted-foreground">Activity history</p>
+                    </div>
+                    <div className="grid grid-cols-7 gap-2">
+                      {["S", "M", "T", "W", "T", "F", "S"].map((day, i) => (
+                        <div key={i} className="text-center text-xs text-muted-foreground">{day}</div>
+                      ))}
+                      {calendarCells.map((day, index) => {
+                        if (!day) return <div key={index} className="aspect-square" />;
+                        const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                        const run = runs[dateKey];
+                        return (
+                          <button
+                            key={dateKey}
+                            onClick={() => setSelectedDate(dateKey)}
+                            className={`aspect-square rounded-lg border text-sm ${
+                              run ? "border-green-500 bg-green-500/20 text-green-400" : "border-border bg-muted/30"
+                            }`}
+                          >
+                            {day}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {selectedDate && (
+                      <div className="rounded-xl border border-border bg-muted/20 p-4">
+                        <h4 className="font-semibold">{selectedDate}</h4>
+                        {runs[selectedDate] ? (
+                          <div className="mt-3 space-y-2 text-sm">
+                            <p>Route: <span className="ml-2">{runs[selectedDate].route}</span></p>
+                            <p>Distance: <span className="ml-2">{runs[selectedDate].distance} mi</span></p>
+                          </div>
+                        ) : (
+                          <p className="mt-3 text-sm text-muted-foreground">No activity recorded.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── PROFILE ── */}
+                {activePanel === "profile" && (
+                  <div className="space-y-6">
+
+                    {/* Avatar + identity */}
+                    <div className="flex flex-col items-center gap-3 pt-2">
+                      <div
+                        className="flex h-16 w-16 items-center justify-center rounded-full text-2xl font-bold text-white"
+                        style={{ backgroundColor: "#3C2A1E" }}
+                      >
+                        {username.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-semibold">{username}</p>
+                        {memberSince && (
+                          <p className="text-sm text-muted-foreground">Member since {memberSince}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* All-time stats */}
+                    <div>
+                      <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                        All-time stats
+                      </p>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="flex flex-col items-center rounded-xl border border-border bg-muted/20 p-3">
+                          <span className="text-xl font-bold">
+                            {savedRoutes.reduce((sum, r) => sum + r.distanceMiles, 0).toFixed(1)}
+                          </span>
+                          <span className="mt-1 text-center text-[11px] leading-tight text-muted-foreground">Total miles</span>
+                        </div>
+                        <div className="flex flex-col items-center rounded-xl border border-border bg-muted/20 p-3">
+                          <span className="text-xl font-bold">{savedRoutes.length}</span>
+                          <span className="mt-1 text-center text-[11px] leading-tight text-muted-foreground">Total runs</span>
+                        </div>
+                        <div className="flex flex-col items-center rounded-xl border border-border bg-muted/20 p-3">
+                          <span className="text-xl font-bold">
+                            {savedRoutes.length > 0
+                              ? Math.max(...savedRoutes.map((r) => r.distanceMiles)).toFixed(1)
+                              : "—"}
+                          </span>
+                          <span className="mt-1 text-center text-[11px] leading-tight text-muted-foreground">Longest run</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Log out */}
+                    <button
+                      onClick={handleSignOut}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/40 px-4 py-3 text-sm font-semibold text-red-500 transition hover:bg-red-500/10"
+                    >
+                      <LogOut size={16} />
+                      Log Out
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+          )}
+        </div>
+
+        {/* ICON RAIL */}
+        <div
+          className="flex w-20 flex-col items-center justify-between py-5"
+          style={{ backgroundColor: "#3C2A1E" }}
+        >
+          {/* Brand */}
+          <div className="flex flex-col items-center gap-3 w-full">
+            <div className="flex flex-col items-center gap-1 pb-3 border-b border-white/10 w-full">
+              <img
+                src="/iter-logo.png"
+                alt="iter mascot"
+                className="w-10 h-10 object-contain"
+              />
+              <span className="text-white font-bold text-base tracking-widest">iter</span>
+            </div>
+
+            {/* Nav icons */}
+            {(
+              [
+                { id: "paths", icon: <Route size={20} />, label: "Paths" },
+                { id: "calendar", icon: <CalendarDays size={20} />, label: "Calendar" },
+                { id: "profile", icon: <User size={20} />, label: "Profile" },
+              ] as { id: Panel; icon: React.ReactNode; label: string }[]
+            ).map(({ id, icon, label }) => (
+              <button
+                key={id}
+                onClick={() => {
+                  setActivePanel((prev) => (prev === id ? null : id));
+                  if (id !== "paths") setSelectedRoute([]);
+                }}
+                aria-label={label}
+                title={label}
+                className={`flex w-14 flex-col items-center gap-1 rounded-xl px-2 py-3 transition ${
+                  activePanel === id
+                    ? "bg-white/20 text-white"
+                    : "text-white/50 hover:bg-white/10 hover:text-white/80"
+                }`}
+              >
+                {icon}
+                <span className="text-[10px] font-medium leading-none">{label}</span>
+              </button>
+            ))}
           </div>
-        </aside>
+
+          {/* Theme toggle */}
+          <button
+            onClick={toggleTheme}
+            className="rounded-xl p-2.5 text-white/50 transition hover:bg-white/10 hover:text-white/80"
+            aria-label="Toggle theme"
+          >
+            {isDark ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+        </div>
       </div>
     </div>
   );
