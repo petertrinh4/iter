@@ -12,6 +12,7 @@ import {
 import { Plus, Route, CalendarDays, Moon, Sun, User, ChevronLeft, LogOut } from "lucide-react";
 import { getWalkingRoute } from "../services/routing";
 import { useTheme } from "../hooks/use-theme";
+import { Calendar } from "../components/ui/calendar";
 
 // ---- Leaflet setup (moved here so it only loads on /home) ----
 import "leaflet/dist/leaflet.css";
@@ -31,8 +32,12 @@ L.Icon.Default.mergeOptions({
 type Panel = "paths" | "calendar" | "profile";
 
 type Run = {
-  route: string;
-  distance: number;
+  _id: string;
+  pathName: string;
+  distanceMiles: number;
+  durationSeconds: number;
+  waypoints: number[][];
+  createdAt: string;
 };
 
 type SavedRoute = {
@@ -41,6 +46,27 @@ type SavedRoute = {
   distanceMiles: number;
   waypoints: number[][];
 };
+
+function dateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function formatDuration(totalSeconds: number): string {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = Math.round(totalSeconds % 60);
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function formatPace(run: Run): string {
+  if (!run.distanceMiles) return "—";
+  return `${formatDuration(run.durationSeconds / run.distanceMiles)} /mi`;
+}
 
 function PathDrawer({
   onAddPoint,
@@ -88,7 +114,9 @@ export function HomePage() {
   const [username, setUsername] = useState("");
   const [memberSince, setMemberSince] = useState("");
 
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+
+  const [myRuns, setMyRuns] = useState<Run[]>([]);
 
   const [pathPoints, setPathPoints] = useState<[number, number][]>([]);
 
@@ -168,6 +196,35 @@ export function HomePage() {
 
   useEffect(() => {
     loadRoutes();
+  }, []);
+
+  /*
+   * Load the logged-in user's completed runs (read-only, logged via the mobile app)
+   */
+  const loadRuns = async () => {
+    const token = localStorage.getItem("idToken");
+    if (!token) return;
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/runs/my-runs`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      setMyRuns(data);
+    } catch (error) {
+      console.error("Failed loading runs:", error);
+    }
+  };
+
+  useEffect(() => {
+    loadRuns();
   }, []);
 
   // ── Read user info from the JWT already in localStorage ────────
@@ -289,54 +346,20 @@ export function HomePage() {
   };
 
   /*
-   * Fake calendar data for now
+   * Bucket runs by the calendar day they happened on
    */
-  const runs: Record<string, Run> = {
-    "2026-07-03": {
-      route: "UCF Loop",
-      distance: 3.1,
-    },
+  const runsByDay = useMemo(() => {
+    const map: Record<string, Run[]> = {};
 
-    "2026-07-05": {
-      route: "Lake Eola",
-      distance: 5.2,
-    },
-
-    "2026-07-08": {
-      route: "Neighborhood Run",
-      distance: 2.4,
-    },
-  };
-
-  const today = new Date();
-
-  const year = today.getFullYear();
-
-  const month = today.getMonth();
-
-  const { monthName, calendarCells } = useMemo(() => {
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    const firstDay = new Date(year, month, 1).getDay();
-
-    const cells: (number | null)[] = [];
-
-    for (let i = 0; i < firstDay; i++) {
-      cells.push(null);
+    for (const run of myRuns) {
+      const key = dateKey(new Date(run.createdAt));
+      (map[key] ??= []).push(run);
     }
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      cells.push(day);
-    }
+    return map;
+  }, [myRuns]);
 
-    return {
-      monthName: new Date(year, month).toLocaleString("default", {
-        month: "long",
-      }),
-
-      calendarCells: cells,
-    };
-  }, [month, year]);
+  const selectedDayRuns = selectedDate ? (runsByDay[dateKey(selectedDate)] ?? []) : [];
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-background text-foreground">
@@ -535,40 +558,58 @@ export function HomePage() {
                 {activePanel === "calendar" && (
                   <div className="space-y-5">
                     <div>
-                      <h3 className="text-lg font-semibold">{monthName} {year}</h3>
+                      <h3 className="text-lg font-semibold">My Runs</h3>
                       <p className="text-sm text-muted-foreground">Activity history</p>
                     </div>
-                    <div className="grid grid-cols-7 gap-2">
-                      {["S", "M", "T", "W", "T", "F", "S"].map((day, i) => (
-                        <div key={i} className="text-center text-xs text-muted-foreground">{day}</div>
-                      ))}
-                      {calendarCells.map((day, index) => {
-                        if (!day) return <div key={index} className="aspect-square" />;
-                        const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                        const run = runs[dateKey];
-                        return (
-                          <button
-                            key={dateKey}
-                            onClick={() => setSelectedDate(dateKey)}
-                            className={`aspect-square rounded-lg border text-sm ${
-                              run ? "border-green-500 bg-green-500/20 text-green-400" : "border-border bg-muted/30"
-                            }`}
-                          >
-                            {day}
-                          </button>
-                        );
-                      })}
-                    </div>
+
+                    {myRuns.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+                        No runs yet. Complete a run in the iter mobile app and it'll show up here.
+                      </div>
+                    ) : (
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={setSelectedDate}
+                        modifiers={{
+                          hasRun: (date) => Boolean(runsByDay[dateKey(date)]),
+                        }}
+                        modifiersClassNames={{
+                          hasRun: "border border-green-500 bg-green-500/20 text-green-400",
+                        }}
+                        className="rounded-xl border border-border bg-muted/20"
+                      />
+                    )}
+
                     {selectedDate && (
                       <div className="rounded-xl border border-border bg-muted/20 p-4">
-                        <h4 className="font-semibold">{selectedDate}</h4>
-                        {runs[selectedDate] ? (
-                          <div className="mt-3 space-y-2 text-sm">
-                            <p>Route: <span className="ml-2">{runs[selectedDate].route}</span></p>
-                            <p>Distance: <span className="ml-2">{runs[selectedDate].distance} mi</span></p>
-                          </div>
-                        ) : (
+                        <h4 className="font-semibold">
+                          {selectedDate.toLocaleDateString("en-US", {
+                            weekday: "long",
+                            month: "long",
+                            day: "numeric",
+                          })}
+                        </h4>
+                        {selectedDayRuns.length === 0 ? (
                           <p className="mt-3 text-sm text-muted-foreground">No activity recorded.</p>
+                        ) : (
+                          <div className="mt-3 space-y-2">
+                            {selectedDayRuns.map((run) => (
+                              <button
+                                key={run._id}
+                                onClick={() => {
+                                  const points = run.waypoints.map(([lng, lat]) => [lat, lng] as [number, number]);
+                                  setSelectedRoute(points);
+                                }}
+                                className="w-full rounded-lg border border-border bg-background/40 p-3 text-left text-sm transition hover:bg-accent"
+                              >
+                                <p className="font-semibold">{run.pathName}</p>
+                                <p className="mt-1 text-muted-foreground">
+                                  {run.distanceMiles.toFixed(2)} mi · {formatDuration(run.durationSeconds)} · {formatPace(run)}
+                                </p>
+                              </button>
+                            ))}
+                          </div>
                         )}
                       </div>
                     )}
