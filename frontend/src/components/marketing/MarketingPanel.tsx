@@ -67,20 +67,20 @@ export function MarketingPanel({ isLogin }: MarketingPanelProps) {
       <div className="relative z-10 flex flex-col h-full justify-between">
         {/* Top: logo */}
       <div className="flex items-center gap-2">
-        <div className="w-9 h-9 overflow-hidden rounded-xl">
-          <img 
-            src="/iter-logo.png" 
-            alt="iter logo" 
-            className="w-full h-full object-cover" 
-          />
+          <div className="w-9 h-9 overflow-hidden rounded-xl">
+            <img 
+              src="/iter-logo.png" 
+              alt="iter logo" 
+              className="w-full h-full object-cover" 
+            />
+          </div>
+          <span
+            className="font-bold text-xl tracking-tight"
+            style={{ color: brandColors.light }}
+          >
+            iter
+          </span>
         </div>
-        <span
-          className="font-bold text-xl tracking-tight"
-          style={{ color: brandColors.light }}
-        >
-          iter
-        </span>
-      </div>
 
         {/* Middle: headline + features */}
         <div className="flex flex-col gap-12">
