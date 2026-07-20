@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { Zap, MapPin, Bookmark, CalendarDays } from "lucide-react";
+import { MapPin, Bookmark, CalendarDays } from "lucide-react";
 import { brandColors } from "../../constants/marketing";
 
 interface MarketingPanelProps {
@@ -66,20 +66,21 @@ export function MarketingPanel({ isLogin }: MarketingPanelProps) {
 
       <div className="relative z-10 flex flex-col h-full justify-between">
         {/* Top: logo */}
-        <div className="flex items-center gap-2">
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center"
-            style={{ background: "rgba(213,160,33,0.25)" }}
-          >
-            <Zap className="size-5" style={{ color: brandColors.accent }} />
-          </div>
-          <span
-            className="font-bold text-xl tracking-tight"
-            style={{ color: brandColors.light }}
-          >
-            iter
-          </span>
+      <div className="flex items-center gap-2">
+        <div className="w-9 h-9 overflow-hidden rounded-xl">
+          <img 
+            src="/iter-logo.png" 
+            alt="iter logo" 
+            className="w-full h-full object-cover" 
+          />
         </div>
+        <span
+          className="font-bold text-xl tracking-tight"
+          style={{ color: brandColors.light }}
+        >
+          iter
+        </span>
+      </div>
 
         {/* Middle: headline + features */}
         <div className="flex flex-col gap-12">
