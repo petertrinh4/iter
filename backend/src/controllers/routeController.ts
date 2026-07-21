@@ -93,6 +93,39 @@ export const loadRoutes = async (req: Request, res: Response) => {
 };
 
 /*
+ * GET /api/routes/search?q=query
+ */
+export const searchRoutes = async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.sub) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const user = await User.findOne({ cognitoSub: req.user.sub });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const q = (req.query.q as string ?? "").trim();
+
+    // Empty query — return all routes
+    const filter: Record<string, unknown> = { user: user._id };
+
+    if (q) {
+      filter.routeName = { $regex: q, $options: "i" };
+    }
+
+    const routes = await Route.find(filter).sort({ createdAt: -1 });
+
+    return res.status(200).json(routes);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+/*
  * DELETE /api/routes/:id
  */
 export const deleteRoute = async (req: Request, res: Response) => {

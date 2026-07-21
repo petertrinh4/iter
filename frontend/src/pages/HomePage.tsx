@@ -132,6 +132,11 @@ export function HomePage() {
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
   const [routesLoading, setRoutesLoading] = useState(true);
   const [runsLoading, setRunsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SavedRoute[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const [selectedSavedRoute, setSelectedSavedRoute] =
     useState<SavedRoute | null>(null);
@@ -205,6 +210,25 @@ export function HomePage() {
   useEffect(() => {
     loadRoutes();
   }, []);
+
+  const searchRoutes = async (q: string) => {
+    setSearchLoading(true);
+    setHasSearched(true);
+    try {
+      const token = localStorage.getItem("idToken");
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/routes/search?q=${encodeURIComponent(q)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      setSearchResults(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Search failed:", err);
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
 
   /*
    * Load the logged-in user's completed runs (read-only, logged via the mobile app)
@@ -534,48 +558,150 @@ export function HomePage() {
 
                     {pathsTab === "saved" && (
                       <div className="space-y-4">
-                        {routesLoading ? (
-                          <>
-                            {[1, 2, 3].map((i) => (
-                              <div
-                                key={i}
-                                className="w-full rounded-xl border border-border bg-muted/20 p-4 space-y-2 animate-pulse"
-                              >
-                                <div className="h-4 w-2/3 rounded bg-muted" />
-                                <div className="h-3 w-1/3 rounded bg-muted" />
+                        {/* Search bar */}
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => {
+                              setSearchQuery(e.target.value);
+                              if (e.target.value === "") {
+                                setHasSearched(false);
+                                setSearchResults([]);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && searchQuery.trim()) {
+                                searchRoutes(searchQuery.trim());
+                              }
+                            }}
+                            placeholder="Search routes…"
+                            className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20"
+                          />
+                          <button
+                            onClick={() => {
+                              if (searchQuery.trim()) {
+                                searchRoutes(searchQuery.trim());
+                              } else {
+                                setHasSearched(false);
+                                setSearchResults([]);
+                              }
+                            }}
+                            className="rounded-xl bg-green-500 px-3 py-2 text-sm font-semibold text-black hover:opacity-90"
+                          >
+                            Search
+                          </button>
+                        </div>
+
+                        <p className="text-[11px] text-muted-foreground">
+                          Searches round trip to server
+                        </p>
+
+                        {/* Results */}
+                        {hasSearched ? (
+                          // Search results
+                          <div className="space-y-3">
+                            {searchLoading ? (
+                              <>
+                                {[1, 2].map((i) => (
+                                  <div key={i} className="w-full rounded-xl border border-border bg-muted/20 p-4 space-y-2 animate-pulse">
+                                    <div className="h-4 w-2/3 rounded bg-muted" />
+                                    <div className="h-3 w-1/3 rounded bg-muted" />
+                                  </div>
+                                ))}
+                              </>
+                            ) : searchResults.length === 0 ? (
+                              <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+                                No routes found for "{searchQuery}".
                               </div>
-                            ))}
-                          </>
+                            ) : (
+                              <>
+                                <p className="text-[11px] text-muted-foreground">
+                                  {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} for "{searchQuery}"
+                                </p>
+                                {searchResults.map((route) => (
+                                  <button
+                                    key={route._id}
+                                    onClick={() => {
+                                      const points = route.waypoints.map(([lng, lat]) => [lat, lng] as [number, number]);
+                                      setSelectedSavedRoute(route);
+                                      setSelectedRoute(points);
+                                    }}
+                                    className="w-full rounded-xl border border-border bg-muted/20 p-4 text-left transition hover:bg-accent"
+                                  >
+                                    <h4 className="font-semibold">{route.routeName}</h4>
+                                    <p className="text-sm text-muted-foreground">{route.distanceMiles.toFixed(2)} miles</p>
+                                  </button>
+                                ))}
+                              </>
+                            )}
+                          </div>
                         ) : (
-                          <>
-                            {savedRoutes.length === 0 && (
+                          // Default: all saved routes
+                          <div className="space-y-3">
+                            {routesLoading ? (
+                              <>
+                                {[1, 2, 3].map((i) => (
+                                  <div key={i} className="w-full rounded-xl border border-border bg-muted/20 p-4 space-y-2 animate-pulse">
+                                    <div className="h-4 w-2/3 rounded bg-muted" />
+                                    <div className="h-3 w-1/3 rounded bg-muted" />
+                                  </div>
+                                ))}
+                              </>
+                            ) : savedRoutes.length === 0 ? (
                               <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
                                 No saved routes yet.
                               </div>
+                            ) : (
+                              savedRoutes.map((route) => (
+                                <button
+                                  key={route._id}
+                                  onClick={() => {
+                                    const points = route.waypoints.map(([lng, lat]) => [lat, lng] as [number, number]);
+                                    setSelectedSavedRoute(route);
+                                    setSelectedRoute(points);
+                                  }}
+                                  className="w-full rounded-xl border border-border bg-muted/20 p-4 text-left transition hover:bg-accent"
+                                >
+                                  <h4 className="font-semibold">{route.routeName}</h4>
+                                  <p className="text-sm text-muted-foreground">{route.distanceMiles.toFixed(2)} miles</p>
+                                </button>
+                              ))
                             )}
-                            {savedRoutes.map((route) => (
+                          </div>
+                        )}
+
+                        {selectedSavedRoute && (
+                          <div className="space-y-2">
+                            {!confirmDelete ? (
                               <button
-                                key={route._id}
-                                onClick={() => {
-                                  const points = route.waypoints.map(([lng, lat]) => [lat, lng] as [number, number]);
-                                  setSelectedSavedRoute(route);
-                                  setSelectedRoute(points);
-                                }}
-                                className="w-full rounded-xl border border-border bg-muted/20 p-4 text-left transition hover:bg-accent"
-                              >
-                                <h4 className="font-semibold">{route.routeName}</h4>
-                                <p className="text-sm text-muted-foreground">{route.distanceMiles.toFixed(2)} miles</p>
-                              </button>
-                            ))}
-                            {selectedSavedRoute && (
-                              <button
-                                onClick={deleteRoute}
-                                className="w-full rounded-xl bg-red-500 px-4 py-3 font-semibold text-white hover:bg-red-600"
+                                onClick={() => setConfirmDelete(true)}
+                                className="w-full rounded-xl border border-red-500/40 px-4 py-3 text-sm font-semibold text-red-500 transition hover:bg-red-500/10"
                               >
                                 Delete Path
                               </button>
+                            ) : (
+                              <div className="space-y-2 rounded-xl border border-red-500/40 bg-red-500/10 p-3">
+                                <p className="text-center text-xs font-medium text-red-500">
+                                  Delete "{selectedSavedRoute.routeName}"?
+                                </p>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => setConfirmDelete(false)}
+                                    className="flex-1 rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:bg-muted"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    onClick={deleteRoute}
+                                    className="flex-1 rounded-lg bg-red-500 px-3 py-2 text-xs font-semibold text-white hover:bg-red-600"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </div>
                             )}
-                          </>
+                          </div>
                         )}
                       </div>
                     )}
