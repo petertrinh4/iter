@@ -483,6 +483,7 @@ export function HomePage() {
                   onClick={() => setActivePanel(null)}
                   className="rounded-lg p-1.5 transition hover:bg-muted"
                   aria-label="Close panel"
+                  type="button"
                 >
                   <ChevronLeft size={18} />
                 </button>
@@ -497,6 +498,7 @@ export function HomePage() {
                     <div className="flex rounded-xl border border-border bg-muted/30 p-1">
                       <button
                         onClick={() => setPathsTab("create")}
+                        aria-label="Create path tab"
                         className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition ${
                           pathsTab === "create" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground"
                         }`}
@@ -505,6 +507,7 @@ export function HomePage() {
                       </button>
                       <button
                         onClick={() => setPathsTab("saved")}
+                        aria-label="Saved paths tab"
                         className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition ${
                           pathsTab === "saved" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground"
                         }`}
@@ -536,6 +539,7 @@ export function HomePage() {
                         </div>
                         <button
                           onClick={() => saveRoute({ geometry: routeGeometry, distanceMiles: distance })}
+                          aria-label="Save path"
                           className="w-full rounded-xl bg-green-500 px-4 py-3 font-semibold text-black hover:opacity-90"
                         >
                           Save Path
@@ -543,12 +547,14 @@ export function HomePage() {
                         <button
                           onClick={() => setPathPoints((prev) => prev.slice(0, -1))}
                           disabled={pathPoints.length === 0}
+                          aria-label="Undo last point"
                           className="w-full rounded-xl border border-border px-4 py-3 font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Undo Last Point
                         </button>
                         <button
                           onClick={() => setPathPoints([])}
+                          aria-label="Clear path"
                           className="w-full rounded-xl border border-border px-4 py-3 hover:bg-muted"
                         >
                           Clear Path
@@ -627,6 +633,7 @@ export function HomePage() {
                                       setSelectedSavedRoute(route);
                                       setSelectedRoute(points);
                                     }}
+                                    aria-label={`View route ${route.routeName}`}
                                     className="w-full rounded-xl border border-border bg-muted/20 p-4 text-left transition hover:bg-accent"
                                   >
                                     <h4 className="font-semibold">{route.routeName}</h4>
@@ -661,6 +668,7 @@ export function HomePage() {
                                     setSelectedSavedRoute(route);
                                     setSelectedRoute(points);
                                   }}
+                                  aria-label={`View route ${route.routeName}`}
                                   className="w-full rounded-xl border border-border bg-muted/20 p-4 text-left transition hover:bg-accent"
                                 >
                                   <h4 className="font-semibold">{route.routeName}</h4>
@@ -676,6 +684,7 @@ export function HomePage() {
                             {!confirmDelete ? (
                               <button
                                 onClick={() => setConfirmDelete(true)}
+                                aria-label={`Delete route ${selectedSavedRoute.routeName}`}
                                 className="w-full rounded-xl border border-red-500/40 px-4 py-3 text-sm font-semibold text-red-500 transition hover:bg-red-500/10"
                               >
                                 Delete Path
@@ -688,12 +697,14 @@ export function HomePage() {
                                 <div className="flex gap-2">
                                   <button
                                     onClick={() => setConfirmDelete(false)}
+                                    aria-label="Cancel delete"
                                     className="flex-1 rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:bg-muted"
                                   >
                                     Cancel
                                   </button>
                                   <button
                                     onClick={deleteRoute}
+                                    aria-label={`Confirm delete route ${selectedSavedRoute.routeName}`}
                                     className="flex-1 rounded-lg bg-red-500 px-3 py-2 text-xs font-semibold text-white hover:bg-red-600"
                                   >
                                     Delete
@@ -763,6 +774,7 @@ export function HomePage() {
                                   const points = run.waypoints.map(([lng, lat]) => [lat, lng] as [number, number]);
                                   setSelectedRoute(points);
                                 }}
+                                aria-label={`View run: ${run.pathName}, ${run.distanceMiles.toFixed(2)} miles`}
                                 className="w-full rounded-lg border border-border bg-background/40 p-3 text-left text-sm transition hover:bg-accent"
                               >
                                 <p className="font-semibold">{run.pathName}</p>
@@ -863,6 +875,7 @@ export function HomePage() {
                     {/* Log out */}
                     <button
                       onClick={handleSignOut}
+                      aria-label="Log out"
                       className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/40 px-4 py-3 text-sm font-semibold text-red-500 transition hover:bg-red-500/10"
                     >
                       <LogOut size={16} />
