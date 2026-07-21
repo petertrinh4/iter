@@ -137,6 +137,8 @@ export function HomePage() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [routeMsg, setRouteMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [deleteMsg, setDeleteMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const [selectedSavedRoute, setSelectedSavedRoute] =
     useState<SavedRoute | null>(null);
@@ -159,7 +161,7 @@ export function HomePage() {
       return result;
     } catch (error) {
       console.error(error);
-      alert("Could not calculate walking route");
+      setRouteMsg({ type: "error", text: "Could not calculate walking route." });
     }
   };
 
@@ -293,12 +295,6 @@ export function HomePage() {
   const deleteRoute = async () => {
     if (!selectedSavedRoute) return;
 
-    const confirmed = window.confirm(
-      `Delete "${selectedSavedRoute.routeName}"?`
-    );
-
-    if (!confirmed) return;
-
     const token = localStorage.getItem("idToken");
 
     const response = await fetch(
@@ -312,14 +308,14 @@ export function HomePage() {
     );
 
     if (response.ok) {
-      alert("Route deleted");
-
+      setDeleteMsg({ type: "success", text: "Route deleted successfully." });
       setSelectedSavedRoute(null);
       setSelectedRoute([]);
-
+      setConfirmDelete(false);
       loadRoutes();
     } else {
-      alert("Failed to delete route");
+      setDeleteMsg({ type: "error", text: "Failed to delete route." });
+      setConfirmDelete(false);
     }
   };
 
@@ -341,8 +337,7 @@ export function HomePage() {
     distanceMiles: number;
   }) => {
     if (routeName.trim() === "" || pathPoints.length < 2) {
-      alert("Add at least 2 points and a name");
-
+      setRouteMsg({ type: "error", text: "Add at least 2 points and a route name." });
       return;
     }
 
@@ -369,15 +364,12 @@ export function HomePage() {
     );
 
     if (response.ok) {
-      alert("Route saved");
-
+      setRouteMsg({ type: "success", text: "Route saved successfully!" });
       setRouteName("");
-
       setPathPoints([]);
-
       loadRoutes();
     } else {
-      alert("Failed saving route");
+      setRouteMsg({ type: "error", text: "Failed to save route." });
     }
   };
 
@@ -442,25 +434,28 @@ export function HomePage() {
             {selectedRoute.length > 0 && <Polyline positions={selectedRoute} />}
 
             {pathPoints.map((point, index) => (
-              <Marker
-                key={index}
-                position={point}
-                icon={routePointIcon}
-                eventHandlers={{
-                  click: () => {
-                    if (window.confirm(`Delete point ${index + 1}?`)) {
-                      setPathPoints((prev) =>
-                        prev.filter((_, i) => i !== index)
-                      );
-                    }
-                  },
-                }}
-              ></Marker>
-            ))}
+            <Marker
+              key={index}
+              position={point}
+              icon={routePointIcon}
+              title={`Way point ${index + 1}`}
+              alt={`Route way point ${index + 1}`}
+              eventHandlers={{
+                click: () => {
+                  setPathPoints((prev) => prev.filter((_, i) => i !== index));
+                },
+              }}
+            ></Marker>
+          ))}
 
-            <Marker position={userLocation} icon={currentLocationIcon}>
-              <Popup>Your Current Location</Popup>
-            </Marker>
+          <Marker 
+            position={userLocation} 
+            icon={currentLocationIcon}
+            title="Your Current Location"
+            alt="Marker showing your current location"
+          >
+            <Popup>Your Current Location</Popup>
+          </Marker>
           </MapContainer>
         </main>
 
@@ -544,6 +539,16 @@ export function HomePage() {
                         >
                           Save Path
                         </button>
+
+                        {routeMsg && (
+                          <p className={`text-sm rounded-lg px-3 py-2 ${
+                            routeMsg.type === "success"
+                              ? "bg-green-500/10 text-green-500"
+                              : "bg-red-500/10 text-red-500"
+                          }`}>
+                            {routeMsg.text}
+                          </p>
+                        )}
                         <button
                           onClick={() => setPathPoints((prev) => prev.slice(0, -1))}
                           disabled={pathPoints.length === 0}
@@ -679,11 +684,24 @@ export function HomePage() {
                           </div>
                         )}
 
+                        {deleteMsg && (
+                          <p className={`text-sm rounded-lg px-3 py-2 ${
+                            deleteMsg.type === "success"
+                              ? "bg-green-500/10 text-green-500"
+                              : "bg-red-500/10 text-red-500"
+                          }`}>
+                            {deleteMsg.text}
+                          </p>
+                        )}
+
                         {selectedSavedRoute && (
                           <div className="space-y-2">
                             {!confirmDelete ? (
                               <button
-                                onClick={() => setConfirmDelete(true)}
+                                onClick={() => {
+                                  setDeleteMsg(null);
+                                  setConfirmDelete(true);
+                                }}
                                 aria-label={`Delete route ${selectedSavedRoute.routeName}`}
                                 className="w-full rounded-xl border border-red-500/40 px-4 py-3 text-sm font-semibold text-red-500 transition hover:bg-red-500/10"
                               >
