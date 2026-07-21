@@ -97,7 +97,7 @@ export function MarketingPanel({ isLogin }: MarketingPanelProps) {
               className="mt-5 text-lg leading-relaxed max-w-md"
               style={{ color: "rgba(237,231,217,0.7)" }}
             >
-              iter lets you plan, save, and revisit your routes — anywhere in
+              iter lets you plan, save, and revisit your routes anywhere in
               the world. Build your path your way, and track your consistency
               over time.
             </p>
