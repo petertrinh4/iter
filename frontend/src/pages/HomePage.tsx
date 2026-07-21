@@ -12,6 +12,7 @@ import {
 import { Plus, Route, CalendarDays, Moon, Sun, User, ChevronLeft, LogOut } from "lucide-react";
 import { getWalkingRoute } from "../services/routing";
 import { useTheme } from "../hooks/use-theme";
+import { useAuthGuard } from "../hooks/use-auth-guard";
 import { Calendar } from "../components/ui/calendar";
 
 // ---- Leaflet setup (moved here so it only loads on /home) ----
@@ -129,11 +130,14 @@ export function HomePage() {
   const [routeName, setRouteName] = useState("");
 
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
+  const [routesLoading, setRoutesLoading] = useState(true);
+  const [runsLoading, setRunsLoading] = useState(true);
 
   const [selectedSavedRoute, setSelectedSavedRoute] =
     useState<SavedRoute | null>(null);
 
   const { isDark, toggleTheme } = useTheme();
+  useAuthGuard();
 
   const DEFAULT_LOCATION: [number, number] = [28.6024, -81.2001];
 
@@ -158,6 +162,7 @@ export function HomePage() {
    * Load saved routes from backend
    */
   const loadRoutes = async () => {
+    setRoutesLoading(true);
     try {
       const token = localStorage.getItem("idToken");
 
@@ -172,9 +177,12 @@ export function HomePage() {
 
       const data = await response.json();
 
-      setSavedRoutes(data);
+      setSavedRoutes(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed loading routes:", error);
+      setSavedRoutes([]);
+    } finally {
+      setRoutesLoading(false);
     }
   };
 
@@ -205,6 +213,7 @@ export function HomePage() {
     const token = localStorage.getItem("idToken");
     if (!token) return;
 
+    setRunsLoading(true);
     try {
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/api/runs/my-runs`,
@@ -217,9 +226,12 @@ export function HomePage() {
 
       const data = await response.json();
 
-      setMyRuns(data);
+      setMyRuns(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed loading runs:", error);
+      setMyRuns([]);
+    } finally {
+      setRunsLoading(false);
     }
   };
 
@@ -522,32 +534,48 @@ export function HomePage() {
 
                     {pathsTab === "saved" && (
                       <div className="space-y-4">
-                        {savedRoutes.length === 0 && (
-                          <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
-                            No saved routes yet.
-                          </div>
-                        )}
-                        {savedRoutes.map((route) => (
-                          <button
-                            key={route._id}
-                            onClick={() => {
-                              const points = route.waypoints.map(([lng, lat]) => [lat, lng] as [number, number]);
-                              setSelectedSavedRoute(route);
-                              setSelectedRoute(points);
-                            }}
-                            className="w-full rounded-xl border border-border bg-muted/20 p-4 text-left transition hover:bg-accent"
-                          >
-                            <h4 className="font-semibold">{route.routeName}</h4>
-                            <p className="text-sm text-muted-foreground">{route.distanceMiles.toFixed(2)} miles</p>
-                          </button>
-                        ))}
-                        {selectedSavedRoute && (
-                          <button
-                            onClick={deleteRoute}
-                            className="w-full rounded-xl bg-red-500 px-4 py-3 font-semibold text-white hover:bg-red-600"
-                          >
-                            Delete Path
-                          </button>
+                        {routesLoading ? (
+                          <>
+                            {[1, 2, 3].map((i) => (
+                              <div
+                                key={i}
+                                className="w-full rounded-xl border border-border bg-muted/20 p-4 space-y-2 animate-pulse"
+                              >
+                                <div className="h-4 w-2/3 rounded bg-muted" />
+                                <div className="h-3 w-1/3 rounded bg-muted" />
+                              </div>
+                            ))}
+                          </>
+                        ) : (
+                          <>
+                            {savedRoutes.length === 0 && (
+                              <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+                                No saved routes yet.
+                              </div>
+                            )}
+                            {savedRoutes.map((route) => (
+                              <button
+                                key={route._id}
+                                onClick={() => {
+                                  const points = route.waypoints.map(([lng, lat]) => [lat, lng] as [number, number]);
+                                  setSelectedSavedRoute(route);
+                                  setSelectedRoute(points);
+                                }}
+                                className="w-full rounded-xl border border-border bg-muted/20 p-4 text-left transition hover:bg-accent"
+                              >
+                                <h4 className="font-semibold">{route.routeName}</h4>
+                                <p className="text-sm text-muted-foreground">{route.distanceMiles.toFixed(2)} miles</p>
+                              </button>
+                            ))}
+                            {selectedSavedRoute && (
+                              <button
+                                onClick={deleteRoute}
+                                className="w-full rounded-xl bg-red-500 px-4 py-3 font-semibold text-white hover:bg-red-600"
+                              >
+                                Delete Path
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                     )}
@@ -562,24 +590,32 @@ export function HomePage() {
                       <p className="text-sm text-muted-foreground">Activity history</p>
                     </div>
 
-                    <Calendar
-                      mode="single"
-                      selected={selectedDate}
-                      onSelect={setSelectedDate}
-                      modifiers={{
-                        hasRun: (date) => Boolean(runsByDay[dateKey(date)]),
-                      }}
-                      modifiersClassNames={{
-                        hasRun: "border border-green-500 bg-green-500/20 text-green-400",
-                      }}
-                      className="rounded-xl border border-border bg-muted/20"
-                    />
-
-                    {myRuns.length === 0 && (
-                      <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
-                        No runs yet. Complete a run in the iter mobile app and it'll show up here.
+                    {runsLoading ? (
+                      <div className="space-y-3 animate-pulse">
+                        <div className="h-64 w-full rounded-xl bg-muted/40" />
+                        <div className="h-4 w-1/2 rounded bg-muted" />
+                        <div className="h-4 w-1/3 rounded bg-muted" />
                       </div>
-                    )}
+                    ) : (
+                      <>
+                        <Calendar
+                          mode="single"
+                          selected={selectedDate}
+                          onSelect={setSelectedDate}
+                          modifiers={{
+                            hasRun: (date) => Boolean(runsByDay[dateKey(date)]),
+                          }}
+                          modifiersClassNames={{
+                            hasRun: "border border-green-500 bg-green-500/20 text-green-400",
+                          }}
+                          className="rounded-xl border border-border bg-muted/20"
+                        />
+
+                        {myRuns.length === 0 && (
+                          <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+                            No runs yet. Complete a run in the iter mobile app and it'll show up here.
+                          </div>
+                        )}
 
                     {selectedDate && (
                       <div className="rounded-xl border border-border bg-muted/20 p-4">
@@ -612,6 +648,8 @@ export function HomePage() {
                           </div>
                         )}
                       </div>
+                    )}
+                      </>
                     )}
                   </div>
                 )}
@@ -659,29 +697,41 @@ export function HomePage() {
                       <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                         All-time stats
                       </p>
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="flex flex-col items-center gap-1 rounded-2xl border border-border bg-muted/20 px-2 py-3">
-                          <span className="text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Total Miles</span>
-                          <span className="text-xl font-bold leading-tight">
-                            {myRuns.reduce((sum, r) => sum + r.distanceMiles, 0).toFixed(1)}
-                          </span>
-                          <span className="text-[11px] text-muted-foreground">mi</span>
+                      {runsLoading ? (
+                        <div className="grid grid-cols-3 gap-2 animate-pulse">
+                          {[1, 2, 3].map((i) => (
+                            <div key={i} className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-muted/20 px-2 py-3">
+                              <div className="h-2.5 w-3/4 rounded bg-muted" />
+                              <div className="h-6 w-1/2 rounded bg-muted" />
+                              <div className="h-2 w-1/3 rounded bg-muted" />
+                            </div>
+                          ))}
                         </div>
-                        <div className="flex flex-col items-center gap-1 rounded-2xl border border-border bg-muted/20 px-2 py-3">
-                          <span className="text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Total Runs</span>
-                          <span className="text-xl font-bold leading-tight">{myRuns.length}</span>
-                          <span className="text-[11px] text-muted-foreground">runs</span>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="flex flex-col items-center gap-1 rounded-2xl border border-border bg-muted/20 px-2 py-3">
+                            <span className="text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Total Miles</span>
+                            <span className="text-xl font-bold leading-tight">
+                              {myRuns.reduce((sum, r) => sum + r.distanceMiles, 0).toFixed(1)}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground">mi</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-1 rounded-2xl border border-border bg-muted/20 px-2 py-3">
+                            <span className="text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Total Runs</span>
+                            <span className="text-xl font-bold leading-tight">{myRuns.length}</span>
+                            <span className="text-[11px] text-muted-foreground">runs</span>
+                          </div>
+                          <div className="flex flex-col items-center gap-1 rounded-2xl border border-border bg-muted/20 px-2 py-3">
+                            <span className="text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Longest</span>
+                            <span className="text-xl font-bold leading-tight">
+                              {myRuns.length > 0
+                                ? Math.max(...myRuns.map((r) => r.distanceMiles)).toFixed(1)
+                                : "0.0"}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground">mi</span>
+                          </div>
                         </div>
-                        <div className="flex flex-col items-center gap-1 rounded-2xl border border-border bg-muted/20 px-2 py-3">
-                          <span className="text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Longest</span>
-                          <span className="text-xl font-bold leading-tight">
-                            {myRuns.length > 0
-                              ? Math.max(...myRuns.map((r) => r.distanceMiles)).toFixed(1)
-                              : "0.0"}
-                          </span>
-                          <span className="text-[11px] text-muted-foreground">mi</span>
-                        </div>
-                      </div>
+                      )}
                     </div>
 
                     {/* Log out */}
