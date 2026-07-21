@@ -6,6 +6,7 @@ import {
   saveRoute,
   loadRoutes,
   deleteRoute,
+  searchRoutes,
 } from "../controllers/routeController.js";
 
 const router = Router();
@@ -17,6 +18,15 @@ router.post(
   "/save",
   authMiddleware,
   saveRoute
+);
+
+/*
+ * GET /api/routes/search?q=query
+ */
+router.get(
+  "/search",
+  authMiddleware,
+  searchRoutes
 );
 
 /*
