@@ -6,7 +6,6 @@ import { useAuthGuard } from "../hooks/use-auth-guard";
 import { dateKey } from "../utils/date";
 import type { Run } from "../types/run";
 import type { Panel } from "../types/homepage";
-import type { SavedRoute } from "../types/route";
 import "leaflet/dist/leaflet.css";
 import "../lib/leaflet";
 import HomeMap from "../components/home/HomeMap";
@@ -14,34 +13,24 @@ import IconRail from "../components/home/IconRail";
 import PathsPanel from "../components/home/PathsPanel";
 import CalendarPanel from "../components/home/CalendarPanel";
 import ProfilePanel from "../components/home/ProfilePanel";
+import { DEFAULT_LOCATION } from "../constants/map";
+import { getUserInfoFromToken } from "../utils/auth";
+import { getMyRuns } from "../services/runApi";
+import { useRoutes } from "../hooks/useRoutes";
 
 export function HomePage() {
   const [activePanel, setActivePanel] = useState<Panel | null>(null);
   const [pathsTab, setPathsTab] = useState<"create" | "saved">("create");
-
   const [username, setUsername] = useState("");
   const [memberSince, setMemberSince] = useState("");
-
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-
   const [myRuns, setMyRuns] = useState<Run[]>([]);
-
   const [pathPoints, setPathPoints] = useState<[number, number][]>([]);
-
   const [routeGeometry, setRouteGeometry] = useState<[number, number][]>([]);
-
   const [distance, setDistance] = useState(0);
-
   const [selectedRoute, setSelectedRoute] = useState<[number, number][]>([]);
-
   const [routeName, setRouteName] = useState("");
-
-  const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
-  const [routesLoading, setRoutesLoading] = useState(true);
   const [runsLoading, setRunsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<SavedRoute[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [routeMsg, setRouteMsg] = useState<{
     type: "success" | "error";
@@ -52,13 +41,27 @@ export function HomePage() {
     text: string;
   } | null>(null);
 
-  const [selectedSavedRoute, setSelectedSavedRoute] =
-    useState<SavedRoute | null>(null);
-
   const { isDark, toggleTheme } = useTheme();
   useAuthGuard();
 
-  const DEFAULT_LOCATION: [number, number] = [28.6024, -81.2001];
+  const {
+  savedRoutes,
+  routesLoading,
+
+  searchQuery,
+  setSearchQuery,
+  searchResults,
+  searchLoading,
+  search,
+
+  selectedSavedRoute,
+  setSelectedSavedRoute,
+
+  loadRoutes,
+
+  saveRoute: saveRouteApi,
+  deleteRoute: deleteRouteApi,
+} = useRoutes();
 
   const [userLocation, setUserLocation] =
     useState<[number, number]>(DEFAULT_LOCATION);
@@ -80,36 +83,6 @@ export function HomePage() {
     }
   };
 
-  /*
-   * Load saved routes from backend
-   */
-  const loadRoutes = async () => {
-    setRoutesLoading(true);
-    try {
-      const token = localStorage.getItem("idToken");
-
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/routes/my-routes`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      console.log("Loaded routes:", data);
-
-      setSavedRoutes(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Failed loading routes:", error);
-      setSavedRoutes([]);
-    } finally {
-      setRoutesLoading(false);
-    }
-  };
-
   useEffect(() => {
     if (!navigator.geolocation) return;
 
@@ -126,47 +99,12 @@ export function HomePage() {
     );
   }, []);
 
-  useEffect(() => {
-    loadRoutes();
-  }, []);
-
-  const searchRoutes = async (q: string) => {
-    setSearchLoading(true);
-    try {
-      const token = localStorage.getItem("idToken");
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/routes/search?q=${encodeURIComponent(q)}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const data = await res.json();
-      setSearchResults(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Search failed:", err);
-      setSearchResults([]);
-    } finally {
-      setSearchLoading(false);
-    }
-  };
-
-  /*
-   * Load the logged-in user's completed runs (read-only, logged via the mobile app)
-   */
+  // Load the logged-in user's completed runs (read-only, logged via the mobile app)
   const loadRuns = async () => {
-    const token = localStorage.getItem("idToken");
-    if (!token) return;
-
     setRunsLoading(true);
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/runs/my-runs`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
 
-      const data = await response.json();
+    try {
+      const data = await getMyRuns();
 
       setMyRuns(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -181,28 +119,14 @@ export function HomePage() {
     loadRuns();
   }, []);
 
-  // ── Read user info from the JWT already in localStorage ────────
+  // Read user info from the JWT already in localStorage
   useEffect(() => {
-    const token = localStorage.getItem("idToken");
-    if (!token) return;
-    try {
-      // JWT payload is the second base64url segment
-      const payload = JSON.parse(
-        atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
-      );
-      // preferred_username is the human-readable username set at registration
-      setUsername(payload["preferred_username"] ?? payload["email"] ?? "User");
-      // "iat" (issued-at) is seconds since epoch — use as a proxy for account context
-      // If your backend stores a real createdAt, prefer that instead
-      if (payload["iat"]) {
-        const d = new Date(payload["iat"] * 1000);
-        setMemberSince(
-          d.toLocaleDateString("en-US", { month: "long", year: "numeric" })
-        );
-      }
-    } catch {
-      console.error("Could not decode idToken");
-    }
+    const user = getUserInfoFromToken();
+
+    if (!user) return;
+
+    setUsername(user.username);
+    setMemberSince(user.memberSince);
   }, []);
 
   const handleSignOut = () => {
@@ -214,17 +138,7 @@ export function HomePage() {
   const deleteRoute = async () => {
     if (!selectedSavedRoute) return;
 
-    const token = localStorage.getItem("idToken");
-
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/routes/${selectedSavedRoute._id}`,
-      {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    const response = await deleteRouteApi(selectedSavedRoute._id);
 
     if (response.ok) {
       setDeleteMsg({ type: "success", text: "Route deleted successfully." });
@@ -248,9 +162,7 @@ export function HomePage() {
     calculateRoute();
   }, [pathPoints]);
 
-  /*
-   * Save route to backend
-   */
+  // Save route to backend
   const saveRoute = async (routeData: {
     geometry: [number, number][];
     distanceMiles: number;
@@ -263,27 +175,13 @@ export function HomePage() {
       return;
     }
 
-    const token = localStorage.getItem("idToken");
-
     const waypoints = routeData.geometry.map(([lat, lng]) => [lng, lat]);
 
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/routes/save`,
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-
-        body: JSON.stringify({
-          routeName,
-          distanceMiles: routeData.distanceMiles,
-          waypoints,
-        }),
-      }
-    );
+    const response = await saveRouteApi({
+      routeName,
+      distanceMiles: routeData.distanceMiles,
+      waypoints,
+    });
 
     if (response.ok) {
       setRouteMsg({ type: "success", text: "Route saved successfully!" });
@@ -295,9 +193,7 @@ export function HomePage() {
     }
   };
 
-  /*
-   * Bucket runs by the calendar day they happened on
-   */
+  // Bucket runs by the calendar day they happened on
   const runsByDay = useMemo(() => {
     const map: Record<string, Run[]> = {};
 
@@ -352,7 +248,7 @@ export function HomePage() {
 
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
-              searchRoutes={searchRoutes}
+              searchRoutes={search}
 
               searchResults={searchResults}
               searchLoading={searchLoading}
