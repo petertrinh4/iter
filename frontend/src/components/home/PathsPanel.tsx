@@ -24,7 +24,7 @@ interface PathsPanelProps {
 
   searchQuery: string;
   setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
-  searchRoutes: (q: string) => void;
+  searchRoutes: (query: string) => Promise<void>;
 
   searchResults: SavedRoute[];
   searchLoading: boolean;
