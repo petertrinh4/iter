@@ -1,11 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router";
-import {
-  ArrowRight,
-  KeyRound,
-  Mail,
-  RotateCcw,
-} from "lucide-react";
+import { ArrowRight, KeyRound, Mail, RotateCcw } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -19,58 +14,75 @@ import {
 } from "../ui/card";
 import { brandColors } from "../../constants/marketing";
 import { useTheme } from "../../hooks/use-theme";
+import { mapVerifyError, mapResendCodeError } from "./authErrorMappers";
 import { AuthAlert } from "./AuthAlert";
-import { AuthPageWrapper } from "./AuthPageWrapper";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
-function mapVerifyError(raw: string): string {
-  const msg = raw.toLowerCase();
-  if (
-    msg.includes("codemismatch") ||
-    msg.includes("invalid verification code") ||
-    msg.includes("invalid code")
-  )
-    return "Incorrect code. Please check your email and try again.";
-  if (
-    msg.includes("expiredcode") ||
-    msg.includes("code has expired") ||
-    msg.includes("expired")
-  )
-    return 'This code has expired. Click "Resend Code" to get a new one.';
-  if (
-    msg.includes("toomanyrequests") ||
-    msg.includes("too many") ||
-    msg.includes("limit exceeded")
-  )
-    return "Too many attempts. Please wait a moment and try again.";
-  if (
-    msg.includes("notauthorized") ||
-    msg.includes("already confirmed")
-  )
-    return "This account is already verified. Try signing in.";
-  return raw;
+async function submitVerifyCode(
+  email: string,
+  code: string,
+  name: string,
+  username: string
+): Promise<{ ok: boolean; alreadyConfirmed?: boolean; errorMessage?: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, code, name, username }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      const raw = data.message || data.error || "Verification failed.";
+      const isAlreadyConfirmed =
+        raw.toLowerCase().includes("already confirmed") ||
+        raw.toLowerCase().includes("notauthorized");
+
+      return {
+        ok: false,
+        alreadyConfirmed: isAlreadyConfirmed,
+        errorMessage: mapVerifyError(raw),
+      };
+    }
+
+    return { ok: true };
+  } catch {
+    return {
+      ok: false,
+      errorMessage:
+        "Could not connect to the server. Check your connection and try again.",
+    };
+  }
 }
 
-function mapResendError(raw: string): string {
-  const msg = raw.toLowerCase();
-  if (
-    msg.includes("toomanyrequests") ||
-    msg.includes("too many") ||
-    msg.includes("limit exceeded")
-  )
-    return "Too many resend attempts. Please wait a moment and try again.";
-  if (
-    msg.includes("usernotfound") ||
-    msg.includes("user does not exist")
-  )
-    return "No account found with this email.";
-  if (
-    msg.includes("notauthorized") ||
-    msg.includes("already confirmed")
-  )
-    return "This account is already verified. Try signing in.";
-  return raw;
+async function submitResendCode(
+  email: string
+): Promise<{ ok: boolean; errorMessage?: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/resend-code`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+
+    if (res.ok) return { ok: true };
+
+    const data = await res.json();
+    return {
+      ok: false,
+      errorMessage: mapResendCodeError(
+        data.message || data.error || "Could not resend code."
+      ),
+    };
+  } catch {
+    return {
+      ok: false,
+      errorMessage:
+        "Could not connect to the server. Check your connection and try again.",
+    };
+  }
 }
 
 export function VerifyForm() {
@@ -83,95 +95,57 @@ export function VerifyForm() {
   const username = location.state?.username || "";
 
   const [code, setCode] = useState("");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [resendLoading, setResendLoading] = useState(false);
-  const [resendSent, setResendSent] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isResendLoading, setIsResendLoading] = useState(false);
+  const [hasResendSucceeded, setHasResendSucceeded] = useState(false);
 
   useEffect(() => {
     if (!email) navigate("/register");
   }, [email, navigate]);
 
-  const handleVerify = async (e: React.FormEvent) => {
+  async function handleVerify(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
-    setSuccess("");
-    setLoading(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+    setIsLoading(true);
 
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code, name, username }),
-      });
+    const result = await submitVerifyCode(email, code, name, username);
+    setIsLoading(false);
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        const raw = data.message || data.error || "Verification failed.";
-        const lower = raw.toLowerCase();
-
-        if (
-          lower.includes("already confirmed") ||
-          lower.includes("notauthorized")
-        ) {
-          navigate("/login");
-          return;
-        }
-
-        setError(mapVerifyError(raw));
+    if (!result.ok) {
+      if (result.alreadyConfirmed) {
+        navigate("/login");
         return;
       }
-
-      setSuccess("Email verified successfully! Redirecting to sign in…");
-      setTimeout(() => navigate("/login"), 1500);
-    } catch {
-      setError(
-        "Could not connect to the server. Check your connection and try again."
-      );
-    } finally {
-      setLoading(false);
+      setErrorMessage(result.errorMessage ?? "Verification failed.");
+      return;
     }
-  };
 
-  const handleResend = async () => {
-    setError("");
-    setResendSent(false);
-    setResendLoading(true);
+    setSuccessMessage("Email verified successfully! Redirecting to sign in…");
+    setTimeout(() => navigate("/login"), 1500);
+  }
 
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/resend-code`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
+  async function handleResend() {
+    setErrorMessage("");
+    setHasResendSucceeded(false);
+    setIsResendLoading(true);
 
-      if (res.ok) {
-        setResendSent(true);
-      } else {
-        const data = await res.json();
-        setError(
-          mapResendError(
-            data.message || data.error || "Could not resend code."
-          )
-        );
-      }
-    } catch {
-      setError(
-        "Could not connect to the server. Check your connection and try again."
-      );
-    } finally {
-      setResendLoading(false);
+    const result = await submitResendCode(email);
+    setIsResendLoading(false);
+
+    if (!result.ok) {
+      setErrorMessage(result.errorMessage ?? "Could not resend code.");
+      return;
     }
-  };
 
-  const formBg = isDark ? "#36312a" : "#EDE7D9";
+    setHasResendSucceeded(true);
+  }
 
   return (
-    <AuthPageWrapper>
-      <Card className="shadow-none border-0 bg-transparent rounded-none">
-        <CardHeader className="text-center pb-6 pt-10">
+    <Card className="shadow-none border-0 bg-transparent rounded-none w-full">
+        <CardHeader className="text-center pb-4 pt-6">
           <div className="flex justify-center mb-4">
             <div
               className="w-14 h-14 rounded-2xl flex items-center justify-center"
@@ -203,9 +177,9 @@ export function VerifyForm() {
 
         <form onSubmit={handleVerify}>
           <CardContent className="flex flex-col gap-5 px-8">
-            <AuthAlert type="error" message={error} />
-            <AuthAlert type="success" message={success} />
-            {resendSent && !error && (
+            <AuthAlert type="error" message={errorMessage} />
+            <AuthAlert type="success" message={successMessage} />
+            {hasResendSucceeded && !errorMessage && (
               <AuthAlert
                 type="info"
                 message="A new code has been sent to your email."
@@ -234,16 +208,16 @@ export function VerifyForm() {
           <CardFooter className="flex flex-col gap-4 px-8 pt-6 pb-8">
             <Button
               type="submit"
-              disabled={loading}
+              disabled={isLoading}
               className="w-full h-11 text-sm font-semibold shadow-lg hover:shadow-xl transition-all duration-300 group"
               style={{
                 background: brandColors.accent,
                 color: "#1a1611",
-                opacity: loading ? 0.7 : 1,
+                opacity: isLoading ? 0.7 : 1,
               }}
             >
-              {loading ? "Verifying…" : "Verify Email"}
-              {!loading && (
+              {isLoading ? "Verifying…" : "Verify Email"}
+              {!isLoading && (
                 <ArrowRight className="ml-2 size-4 group-hover:translate-x-1 transition-transform" />
               )}
             </Button>
@@ -255,7 +229,7 @@ export function VerifyForm() {
               <div className="relative flex justify-center text-xs uppercase">
                 <span
                   className="px-2 text-muted-foreground transition-colors duration-500"
-                  style={{ background: formBg }}
+                  style={{ background: isDark ? "#36312a" : "#EDE7D9" }}
                 >
                   Didn&apos;t receive it?
                 </span>
@@ -265,17 +239,17 @@ export function VerifyForm() {
             <Button
               type="button"
               variant="outline"
-              disabled={resendLoading}
+              disabled={isResendLoading}
               onClick={handleResend}
               className="w-full h-11 border-2 transition-all duration-300 gap-2"
               style={{
                 borderColor: brandColors.accent,
                 color: isDark ? brandColors.accent : brandColors.accentText,
-                opacity: resendLoading ? 0.7 : 1,
+                opacity: isResendLoading ? 0.7 : 1,
               }}
             >
               <RotateCcw className="size-4" />
-              {resendLoading ? "Sending…" : "Resend Code"}
+              {isResendLoading ? "Sending…" : "Resend Code"}
             </Button>
 
             <button
@@ -287,7 +261,6 @@ export function VerifyForm() {
             </button>
           </CardFooter>
         </form>
-      </Card>
-    </AuthPageWrapper>
+    </Card>
   );
 }

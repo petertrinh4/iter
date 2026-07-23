@@ -14,28 +14,40 @@ import {
 } from "../ui/card";
 import { brandColors } from "../../constants/marketing";
 import { useTheme } from "../../hooks/use-theme";
+import { mapForgotPasswordError } from "./authErrorMappers";
 import { AuthAlert } from "./AuthAlert";
-import { AuthPageWrapper } from "./AuthPageWrapper";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
-function mapForgotError(raw: string): string {
-  const msg = raw.toLowerCase();
-  if (
-    msg.includes("usernotfound") ||
-    msg.includes("user does not exist") ||
-    msg.includes("username/client id combination")
-  )
-    return "No account found with this email address.";
-  if (
-    msg.includes("toomanyrequests") ||
-    msg.includes("too many") ||
-    msg.includes("limit exceeded")
-  )
-    return "Too many attempts. Please wait a moment and try again.";
-  if (msg.includes("invalidparameter") || msg.includes("invalid email"))
-    return "Please enter a valid email address.";
-  return raw;
+async function submitForgotPassword(
+  email: string
+): Promise<{ ok: boolean; errorMessage?: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      return {
+        ok: false,
+        errorMessage: mapForgotPasswordError(
+          data.message || data.error || "Unable to send reset code."
+        ),
+      };
+    }
+
+    return { ok: true };
+  } catch {
+    return {
+      ok: false,
+      errorMessage:
+        "Could not connect to the server. Check your connection and try again.",
+    };
+  }
 }
 
 export function ForgotPasswordForm() {
@@ -43,46 +55,28 @@ export function ForgotPasswordForm() {
   const { isDark } = useTheme();
 
   const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
-    setLoading(true);
+    setErrorMessage("");
+    setIsLoading(true);
 
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
+    const result = await submitForgotPassword(email);
+    setIsLoading(false);
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(
-          mapForgotError(
-            data.message || data.error || "Unable to send reset code."
-          )
-        );
-        return;
-      }
-
-      navigate("/reset-password", { state: { email } });
-    } catch {
-      setError(
-        "Could not connect to the server. Check your connection and try again."
-      );
-    } finally {
-      setLoading(false);
+    if (!result.ok) {
+      setErrorMessage(result.errorMessage ?? "Unable to send reset code.");
+      return;
     }
-  };
+
+    navigate("/reset-password", { state: { email } });
+  }
 
   return (
-    <AuthPageWrapper>
-      <Card className="shadow-none border-0 bg-transparent rounded-none">
-        <CardHeader className="text-center pb-6 pt-10">
+    <Card className="shadow-none border-0 bg-transparent rounded-none w-full">
+        <CardHeader className="text-center pb-4 pt-6">
           <div className="flex justify-center mb-4">
             <div
               className="w-14 h-14 rounded-2xl flex items-center justify-center"
@@ -106,7 +100,7 @@ export function ForgotPasswordForm() {
 
         <form onSubmit={handleSubmit}>
           <CardContent className="flex flex-col gap-5 px-8">
-            <AuthAlert type="error" message={error} />
+            <AuthAlert type="error" message={errorMessage} />
 
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -128,16 +122,16 @@ export function ForgotPasswordForm() {
           <CardFooter className="flex flex-col gap-4 px-8 pt-6 pb-8">
             <Button
               type="submit"
-              disabled={loading}
+              disabled={isLoading}
               className="w-full h-11 text-sm font-semibold shadow-lg hover:shadow-xl transition-all duration-300 group"
               style={{
                 background: brandColors.accent,
                 color: "#1a1611",
-                opacity: loading ? 0.7 : 1,
+                opacity: isLoading ? 0.7 : 1,
               }}
             >
-              {loading ? "Sending…" : "Send Reset Code"}
-              {!loading && (
+              {isLoading ? "Sending…" : "Send Reset Code"}
+              {!isLoading && (
                 <ArrowRight className="ml-2 size-4 group-hover:translate-x-1 transition-transform" />
               )}
             </Button>
@@ -151,7 +145,6 @@ export function ForgotPasswordForm() {
             </button>
           </CardFooter>
         </form>
-      </Card>
-    </AuthPageWrapper>
+    </Card>
   );
 }
