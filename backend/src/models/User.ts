@@ -1,19 +1,25 @@
 import mongoose from "mongoose";
 
 export interface IUser extends mongoose.Document {
-  cognitoSub: string;
   email: string;
   username: string;
   name: string;
+  password?: string; // Required for local auth
+  isVerified?: boolean;
+  verificationCode?: string;
   createdAt: Date;
 }
 
 const userSchema = new mongoose.Schema<IUser>({
-  cognitoSub: { type: String, required: true, unique: true },
-  email: { type: String, required: true },
+  // cognitoSub has been completely removed!
+  email: { type: String, required: true, unique: true },
   username: { type: String, required: true },
-  name: { type: String, required: true }, // ✅ ADD THIS
+  name: { type: String, required: true },
+  password: { type: String, required: true },
+  isVerified: { type: Boolean, default: false },
+  verificationCode: { type: String },
   createdAt: { type: Date, default: Date.now },
 });
 
-export default mongoose.model<IUser>("User", userSchema);
+export default mongoose.models.User ||
+  mongoose.model<IUser>("User", userSchema);

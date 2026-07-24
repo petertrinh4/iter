@@ -1,11 +1,6 @@
-import { CognitoJwtVerifier } from "aws-jwt-verify";
 import type { Request, Response, NextFunction } from "express";
-
-const verifier = CognitoJwtVerifier.create({
-  userPoolId: process.env.COGNITO_USER_POOL_ID!,
-  tokenUse: "id",
-  clientId: process.env.COGNITO_CLIENT_ID!,
-});
+import jwt from "jsonwebtoken";
+import { isExpired } from "../utils/createJWT.js";
 
 export async function authMiddleware(
   req: Request,
@@ -14,39 +9,36 @@ export async function authMiddleware(
 ) {
   try {
     const authHeader = req.headers.authorization;
+    let token = "";
 
-    if (!authHeader?.startsWith("Bearer ")) {
-      return res.status(401).json({
-        message: "Missing authorization token",
-      });
+    // Support both Mobile (Bearer header) and Web (req.body.jwtToken from prof's guide)
+    if (authHeader?.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
+    } else if (req.body.jwtToken) {
+      token = req.body.jwtToken;
     }
-
-    const token = authHeader.split(" ")[1];
 
     if (!token) {
-      return res.status(401).json({
-        message: "Missing token",
-      });
+      return res.status(401).json({ error: "Missing token", jwtToken: "" });
     }
 
-    const payload = await verifier.verify(token);
+    // PROFESSOR'S EXPIRATION CHECK:
+    if (isExpired(token)) {
+      return res
+        .status(401)
+        .json({ error: "The JWT is no longer valid", jwtToken: "" });
+    }
 
-    const user: Express.Request["user"] = {
-      sub: payload.sub,
+    // Decode to attach user info to request
+    const decoded = jwt.decode(token) as any;
+    req.user = {
+      sub: decoded.userId || decoded.id,
+      email: decoded.email,
     };
-
-    if (typeof payload.email === "string") {
-      user.email = payload.email;
-    }
-
-    req.user = user;
 
     next();
   } catch (error) {
-    console.error(error);
-
-    res.status(401).json({
-      message: "Invalid token",
-    });
+    console.error("Auth Middleware Error:", error);
+    res.status(401).json({ error: "Invalid or expired token", jwtToken: "" });
   }
 }
