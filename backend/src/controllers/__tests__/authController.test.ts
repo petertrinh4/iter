@@ -35,7 +35,6 @@ import {
   resetPassword,
 } from "../authController.js";
 
-
 function mockResponse() {
   const res: any = {};
 
@@ -45,18 +44,13 @@ function mockResponse() {
   return res;
 }
 
-
 describe("authController", () => {
-
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-
   describe("register", () => {
-
     it("returns 201 when signup succeeds", async () => {
-
       sendMock.mockResolvedValue({});
 
       const req = {
@@ -74,22 +68,15 @@ describe("authController", () => {
 
       expect(sendMock).toHaveBeenCalled();
 
-      expect(res.status)
-        .toHaveBeenCalledWith(201);
+      expect(res.status).toHaveBeenCalledWith(201);
 
-      expect(res.json)
-        .toHaveBeenCalledWith({
-          message: "Verification code sent.",
-        });
-
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Verification code sent.",
+      });
     });
 
-
     it("returns 400 when cognito fails", async () => {
-
-      sendMock.mockRejectedValue(
-        new Error("failed")
-      );
+      sendMock.mockRejectedValue(new Error("failed"));
 
       const req = {
         body: {
@@ -100,338 +87,206 @@ describe("authController", () => {
         },
       } as Request;
 
-
       const res = mockResponse();
-
 
       await register(req, res);
 
-
-      expect(res.status)
-        .toHaveBeenCalledWith(400);
-
+      expect(res.status).toHaveBeenCalledWith(400);
     });
-
   });
 
-
-
   describe("verifyEmail", () => {
-
     it("rejects missing fields", async () => {
-
       const req = {
         body: {},
       } as Request;
 
-
       const res = mockResponse();
-
 
       await verifyEmail(req, res);
 
-
-      expect(res.status)
-        .toHaveBeenCalledWith(400);
-
+      expect(res.status).toHaveBeenCalledWith(400);
     });
 
-
     it("verifies email successfully", async () => {
-
       sendMock.mockResolvedValue({});
-
 
       const req = {
         body: {
-          email:"test@test.com",
-          code:"123456",
+          email: "test@test.com",
+          code: "123456",
         },
       } as Request;
 
-
       const res = mockResponse();
 
+      await verifyEmail(req, res);
 
-      await verifyEmail(req,res);
-
-
-      expect(res.status)
-        .toHaveBeenCalledWith(200);
-
+      expect(res.status).toHaveBeenCalledWith(200);
     });
-
 
     it("returns 400 for invalid code", async () => {
-
-      sendMock.mockRejectedValue(
-        new Error("bad code")
-      );
-
+      sendMock.mockRejectedValue(new Error("bad code"));
 
       const req = {
-        body:{
-          email:"test@test.com",
-          code:"wrong"
-        }
+        body: {
+          email: "test@test.com",
+          code: "wrong",
+        },
       } as Request;
-
 
       const res = mockResponse();
 
+      await verifyEmail(req, res);
 
-      await verifyEmail(req,res);
-
-
-      expect(res.status)
-        .toHaveBeenCalledWith(400);
-
+      expect(res.status).toHaveBeenCalledWith(400);
     });
-
   });
 
-
-
   describe("login", () => {
-
-
-    it("rejects missing credentials", async()=>{
-
-      const req={
-        body:{}
+    it("rejects missing credentials", async () => {
+      const req = {
+        body: {},
       } as Request;
 
+      const res = mockResponse();
 
-      const res=mockResponse();
+      await login(req, res);
 
-
-      await login(req,res);
-
-
-      expect(res.status)
-        .toHaveBeenCalledWith(400);
-
+      expect(res.status).toHaveBeenCalledWith(400);
     });
 
-
-
-    it("logs user in successfully", async()=>{
-
-
+    it("logs user in successfully", async () => {
       sendMock.mockResolvedValue({
-
-        AuthenticationResult:{
-          IdToken:"id-token",
-          AccessToken:"access-token",
-          RefreshToken:"refresh-token"
-        }
-
+        AuthenticationResult: {
+          IdToken: "id-token",
+          AccessToken: "access-token",
+          RefreshToken: "refresh-token",
+        },
       });
-
 
       decodeMock.mockReturnValue({
-
-        sub:"cognito123",
-        email:"test@test.com",
-        name:"Peter",
-        preferred_username:"peter"
-
+        sub: "cognito123",
+        email: "test@test.com",
+        name: "Peter",
+        preferred_username: "peter",
       });
-
 
       findOneMock.mockResolvedValue(null);
 
       createMock.mockResolvedValue({});
 
-
-      const req={
-        body:{
-          email:"test@test.com",
-          password:"password"
-        }
+      const req = {
+        body: {
+          email: "test@test.com",
+          password: "password",
+        },
       } as Request;
 
+      const res = mockResponse();
 
+      await login(req, res);
 
-      const res=mockResponse();
+      expect(createMock).toHaveBeenCalled();
 
-
-      await login(req,res);
-
-
-
-      expect(createMock)
-        .toHaveBeenCalled();
-
-
-      expect(res.status)
-        .toHaveBeenCalledWith(200);
-
+      expect(res.status).toHaveBeenCalledWith(200);
     });
 
+    it("rejects invalid login", async () => {
+      sendMock.mockRejectedValue(new Error("invalid"));
 
-
-    it("rejects invalid login", async()=>{
-
-
-      sendMock.mockRejectedValue(
-        new Error("invalid")
-      );
-
-
-      const req={
-        body:{
-          email:"test@test.com",
-          password:"bad"
-        }
+      const req = {
+        body: {
+          email: "test@test.com",
+          password: "bad",
+        },
       } as Request;
 
+      const res = mockResponse();
 
-      const res=mockResponse();
+      await login(req, res);
 
-
-      await login(req,res);
-
-
-      expect(res.status)
-        .toHaveBeenCalledWith(401);
-
+      expect(res.status).toHaveBeenCalledWith(401);
     });
-
   });
 
-
-
-  describe("forgotPassword",()=>{
-
-
-    it("requires email",async()=>{
-
-      const req={
-        body:{}
+  describe("forgotPassword", () => {
+    it("requires email", async () => {
+      const req = {
+        body: {},
       } as Request;
 
+      const res = mockResponse();
 
-      const res=mockResponse();
+      await forgotPassword(req, res);
 
-
-      await forgotPassword(req,res);
-
-
-      expect(res.status)
-        .toHaveBeenCalledWith(400);
-
+      expect(res.status).toHaveBeenCalledWith(400);
     });
 
-
-
-    it("sends reset code",async()=>{
-
+    it("sends reset code", async () => {
       sendMock.mockResolvedValue({});
 
-
-      const req={
-        body:{
-          email:"test@test.com"
-        }
+      const req = {
+        body: {
+          email: "test@test.com",
+        },
       } as Request;
 
+      const res = mockResponse();
 
-      const res=mockResponse();
+      await forgotPassword(req, res);
 
-
-      await forgotPassword(req,res);
-
-
-      expect(res.status)
-        .toHaveBeenCalledWith(200);
-
+      expect(res.status).toHaveBeenCalledWith(200);
     });
-
-
   });
 
-
-
-  describe("resetPassword",()=>{
-
-
-    it("requires fields",async()=>{
-
-      const req={
-        body:{}
+  describe("resetPassword", () => {
+    it("requires fields", async () => {
+      const req = {
+        body: {},
       } as Request;
 
+      const res = mockResponse();
 
-      const res=mockResponse();
+      await resetPassword(req, res);
 
-
-      await resetPassword(req,res);
-
-
-      expect(res.status)
-        .toHaveBeenCalledWith(400);
-
+      expect(res.status).toHaveBeenCalledWith(400);
     });
 
-
-
-    it("resets password successfully",async()=>{
-
+    it("resets password successfully", async () => {
       sendMock.mockResolvedValue({});
 
-
-      const req={
-        body:{
-          email:"test@test.com",
-          code:"123456",
-          newPassword:"newpassword"
-        }
+      const req = {
+        body: {
+          email: "test@test.com",
+          code: "123456",
+          newPassword: "newpassword",
+        },
       } as Request;
 
+      const res = mockResponse();
 
-      const res=mockResponse();
+      await resetPassword(req, res);
 
-
-      await resetPassword(req,res);
-
-
-      expect(res.status)
-        .toHaveBeenCalledWith(200);
-
+      expect(res.status).toHaveBeenCalledWith(200);
     });
 
+    it("rejects invalid reset code", async () => {
+      sendMock.mockRejectedValue(new Error("invalid"));
 
-    it("rejects invalid reset code",async()=>{
-
-
-      sendMock.mockRejectedValue(
-        new Error("invalid")
-      );
-
-
-      const req={
-        body:{
-          email:"test@test.com",
-          code:"wrong",
-          newPassword:"password"
-        }
+      const req = {
+        body: {
+          email: "test@test.com",
+          code: "wrong",
+          newPassword: "password",
+        },
       } as Request;
 
+      const res = mockResponse();
 
-      const res=mockResponse();
+      await resetPassword(req, res);
 
-
-      await resetPassword(req,res);
-
-
-      expect(res.status)
-        .toHaveBeenCalledWith(400);
-
+      expect(res.status).toHaveBeenCalledWith(400);
     });
-
-
   });
-
-
 });

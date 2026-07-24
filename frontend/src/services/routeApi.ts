@@ -9,22 +9,46 @@ function getAuthHeaders() {
 }
 
 export async function getMyRoutes() {
-  const response = await fetch(`${API_URL}/api/routes/my-routes`, {
-    headers: getAuthHeaders(),
-  });
+  try {
+    const response = await fetch(`${API_URL}/api/routes/my-routes`, {
+      headers: getAuthHeaders(),
+    });
 
-  return response.json();
+    // If backend returns an error (like 401 Unauthorized), return empty array
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    
+    // Safely return the array
+    return Array.isArray(data) ? data : (data.routes || []);
+  } catch (err) {
+    console.error("Error fetching routes:", err);
+    return [];
+  }
 }
 
 export async function searchRoutes(query: string) {
-  const response = await fetch(
-    `${API_URL}/api/routes/search?q=${encodeURIComponent(query)}`,
-    {
-      headers: getAuthHeaders(),
+  try {
+    // If the search bar is empty, just load all routes normally
+    if (!query || query.trim() === "") {
+      return getMyRoutes(); 
     }
-  );
 
-  return response.json();
+    const response = await fetch(
+      `${API_URL}/api/routes/search?q=${encodeURIComponent(query.trim())}`,
+      {
+        headers: getAuthHeaders(),
+      }
+    );
+
+    if (!response.ok) return [];
+    
+    const data = await response.json();
+    return Array.isArray(data) ? data : (data.routes || []);
+  } catch (err) {
+    console.error("Error searching routes:", err);
+    return [];
+  }
 }
 
 export async function saveRoute(data: {

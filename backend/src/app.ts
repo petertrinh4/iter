@@ -9,7 +9,7 @@ const app = express();
 // 1. BULLETPROOF FIX: Automatically remove double slashes from incoming URLs!
 // This fixes the issue where the frontend accidentally sends http://localhost:3000//api/...
 app.use((req, res, next) => {
-  req.url = req.url.replace(/\/{2,}/g, '/');
+  req.url = req.url.replace(/\/{2,}/g, "/");
   next();
 });
 
@@ -19,8 +19,13 @@ app.use(
     origin: true,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Bypass-Tunnel-Reminder", "User-Agent"],
-  })
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Bypass-Tunnel-Reminder",
+      "User-Agent",
+    ],
+  }),
 );
 
 app.use(express.json());

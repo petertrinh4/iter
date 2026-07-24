@@ -77,21 +77,26 @@ export const searchRoutes = async (req: Request, res: Response) => {
     }
 
     const user = await User.findById(userId);
-
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const q = (req.query.q as string ?? "").trim();
+    // Safely extract the query and trim whitespace
+    const q = ((req.query.q as string) ?? "").trim();
+    console.log(`🔍 SEARCH HIT! Query received: "${q}"`);
+
     const filter: Record<string, unknown> = { user: user._id };
 
+    // If the query is not empty, add the regex filter
     if (q) {
-      filter.routeName = { $regex: q, $options: "i" };
+      filter.routeName = { $regex: q, $options: "i" }; // 'i' means case-insensitive
     }
 
     const routes = await Route.find(filter).sort({ createdAt: -1 });
+    console.log(`✅ Found ${routes.length} routes matching "${q}"`);
 
-    return res.status(200).json(routes);
+    // We return it wrapped in { routes } to match how your getMyRoutes handles data
+    return res.status(200).json({ routes });
   } catch (err) {
     console.error("Search Error:", err);
     return res.status(500).json({ message: "Server error" });

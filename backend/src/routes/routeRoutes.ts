@@ -1,50 +1,24 @@
 import { Router } from "express";
-
 import { authMiddleware } from "../middleware/authMiddleware.js";
-
 import {
   saveRoute,
   loadRoutes,
-  deleteRoute,
   searchRoutes,
+  deleteRoute,
 } from "../controllers/routeController.js";
 
 const router = Router();
 
-/*
- * POST /api/routes/save
- */
-router.post(
-  "/save",
-  authMiddleware,
-  saveRoute
-);
+// 1. MUST match frontend API_URL/api/routes/my-routes
+router.get("/my-routes", authMiddleware, loadRoutes);
 
-/*
- * GET /api/routes/search?q=query
- */
-router.get(
-  "/search",
-  authMiddleware,
-  searchRoutes
-);
+// 2. MUST match frontend API_URL/api/routes/save
+router.post("/save", authMiddleware, saveRoute);
 
-/*
- * GET /api/routes/my-routes
- */
-router.get(
-  "/my-routes",
-  authMiddleware,
-  loadRoutes
-);
+// 3. MUST match frontend API_URL/api/routes/search
+router.get("/search", authMiddleware, searchRoutes);
 
-/*
- * DELETE /api/routes/:id
- */
-router.delete(
-  "/:id",
-  authMiddleware,
-  deleteRoute
-);
+// 4. MUST match frontend API_URL/api/routes/:id
+router.delete("/:id", authMiddleware, deleteRoute);
 
 export default router;

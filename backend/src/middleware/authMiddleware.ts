@@ -24,13 +24,15 @@ export async function authMiddleware(
 
     // PROFESSOR'S EXPIRATION CHECK:
     if (isExpired(token)) {
-      return res.status(401).json({ error: "The JWT is no longer valid", jwtToken: "" });
+      return res
+        .status(401)
+        .json({ error: "The JWT is no longer valid", jwtToken: "" });
     }
 
     // Decode to attach user info to request
     const decoded = jwt.decode(token) as any;
     req.user = {
-      sub: decoded.userId || decoded.id, 
+      sub: decoded.userId || decoded.id,
       email: decoded.email,
     };
 
