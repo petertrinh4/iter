@@ -15,7 +15,7 @@ import {
 } from "../ui/card";
 import { brandColors } from "../../constants/marketing";
 import { useTheme } from "../../hooks/use-theme";
-import { mapLoginError } from "./authErrorMappers";
+import { mapLoginError } from "../../utils/authErrorMappers";
 import { AuthAlert } from "./AuthAlert";
 import { PasswordInput } from "./PasswordInput";
 

@@ -1,5 +1,5 @@
 import { Outlet, useLocation } from "react-router";
-import { DarkModeToggle } from "../components/DarkModeToggle";
+import { DarkModeToggle } from "../components/common/DarkModeToggle";
 import { AuthFormPanel } from "../components/auth/AuthFormPanel";
 import { MarketingPanel } from "../components/marketing/MarketingPanel";
 import { useTheme } from "../hooks/use-theme";

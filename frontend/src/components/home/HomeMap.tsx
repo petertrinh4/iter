@@ -9,8 +9,8 @@ import {
 import type { Coordinate } from "../../types/geo";
 import type { Panel } from "../../types/homepage";
 
-import CurrentLocationButton from "../CurrentLocationButton";
-import { currentLocationIcon, routePointIcon } from "../icons";
+import CurrentLocationButton from "../common/CurrentLocationButton";
+import { currentLocationIcon, routePointIcon } from "../../constants/icons";
 import FlyToUser from "../map/FlyToUser";
 import PathDrawer from "../map/PathDrawer";
 import ZoomToRoute from "../map/ZoomToRoute";

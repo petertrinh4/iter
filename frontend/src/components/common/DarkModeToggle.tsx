@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "motion/react";
 import { Moon, Sun } from "lucide-react";
-import { useTheme } from "../hooks/use-theme";
+import { useTheme } from "../../hooks/use-theme";
 
 export function DarkModeToggle() {
   const { isDark, toggleTheme } = useTheme();

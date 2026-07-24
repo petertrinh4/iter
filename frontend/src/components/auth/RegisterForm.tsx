@@ -16,8 +16,8 @@ import {
 import { brandColors } from "../../constants/marketing";
 import { useTheme } from "../../hooks/use-theme";
 import { usePasswordValidation } from "../../hooks/usePasswordValidation";
-import { mapRegisterError } from "./authErrorMappers";
-import type { RegisterField } from "./authErrorMappers";
+import { mapRegisterError } from "../../utils/authErrorMappers";
+import type { RegisterField } from "../../utils/authErrorMappers";
 import { AuthAlert } from "./AuthAlert";
 import { PasswordInput } from "./PasswordInput";
 import { PasswordRulesChecklist } from "./PasswordRulesChecklist";

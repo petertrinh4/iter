@@ -14,7 +14,7 @@ import {
 } from "../ui/card";
 import { brandColors } from "../../constants/marketing";
 import { useTheme } from "../../hooks/use-theme";
-import { mapForgotPasswordError } from "./authErrorMappers";
+import { mapForgotPasswordError } from "../../utils/authErrorMappers";
 import { AuthAlert } from "./AuthAlert";
 
 const API_BASE = import.meta.env.VITE_API_URL;
