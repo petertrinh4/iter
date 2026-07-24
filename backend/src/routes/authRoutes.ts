@@ -3,6 +3,7 @@ import { register, verifyEmail, login, forgotPassword, resetPassword } from "../
 
 const router = Router();
 
+// Ensure all these exactly match what the frontend is calling
 router.post("/register", register);
 router.post("/verify", verifyEmail);
 router.post("/login", login);

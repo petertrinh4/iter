@@ -1,6 +1,5 @@
 import type { Request, Response } from "express";
 import mongoose from "mongoose";
-
 import Route from "../models/Route.js";
 import User from "../models/User.js";
 
@@ -12,27 +11,20 @@ export const saveRoute = async (req: Request, res: Response) => {
     const { routeName, distanceMiles, waypoints } = req.body;
 
     if (!routeName || !distanceMiles || !waypoints || waypoints.length < 2) {
-      return res.status(400).json({
-        message: "Invalid route data",
-      });
+      return res.status(400).json({ message: "Invalid route data" });
     }
 
-    if (!req.user?.sub) {
-      return res.status(401).json({
-        message: "Unauthorized",
-      });
+    const userId = req.user?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
     }
-   console.log("Authenticated user:", req.user);
-console.log("Cognito sub:", req.user.sub); 
-    // Find the MongoDB user using the Cognito sub
-    const user = await User.findOne({
-      cognitoSub: req.user.sub,
-    });
+
+    // FIND BY MONGODB ID DIRECTLY (No more Cognito!)
+    const user = await User.findById(userId);
 
     if (!user) {
-      return res.status(404).json({
-        message: "User not found",
-      });
+      // THIS WAS THE 404 YOU WERE SEEING!
+      return res.status(404).json({ message: "User not found" });
     }
 
     const route = await Route.create({
@@ -42,16 +34,10 @@ console.log("Cognito sub:", req.user.sub);
       waypoints,
     });
 
-    return res.status(201).json({
-      message: "Route saved successfully",
-      route,
-    });
+    return res.status(201).json({ message: "Route saved successfully", route });
   } catch (err) {
-    console.error(err);
-
-    return res.status(500).json({
-      message: "Server error",
-    });
+    console.error("Save Route Error:", err);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -60,35 +46,23 @@ console.log("Cognito sub:", req.user.sub);
  */
 export const loadRoutes = async (req: Request, res: Response) => {
   try {
-    if (!req.user?.sub) {
-      return res.status(401).json({
-        message: "Unauthorized",
-      });
+    const userId = req.user?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await User.findOne({
-      cognitoSub: req.user.sub,
-    });
+    const user = await User.findById(userId);
 
     if (!user) {
-      return res.status(404).json({
-        message: "User not found",
-      });
+      return res.status(404).json({ message: "User not found" });
     }
 
-    const routes = await Route.find({
-      user: user._id,
-    }).sort({
-      createdAt: -1,
-    });
+    const routes = await Route.find({ user: user._id }).sort({ createdAt: -1 });
 
     return res.status(200).json(routes);
   } catch (err) {
-    console.error(err);
-
-    return res.status(500).json({
-      message: "Server error",
-    });
+    console.error("Load Routes Error:", err);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -97,19 +71,18 @@ export const loadRoutes = async (req: Request, res: Response) => {
  */
 export const searchRoutes = async (req: Request, res: Response) => {
   try {
-    if (!req.user?.sub) {
+    const userId = req.user?.sub;
+    if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await User.findOne({ cognitoSub: req.user.sub });
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
     const q = (req.query.q as string ?? "").trim();
-
-    // Empty query — return all routes
     const filter: Record<string, unknown> = { user: user._id };
 
     if (q) {
@@ -120,7 +93,7 @@ export const searchRoutes = async (req: Request, res: Response) => {
 
     return res.status(200).json(routes);
   } catch (err) {
-    console.error(err);
+    console.error("Search Error:", err);
     return res.status(500).json({ message: "Server error" });
   }
 };
@@ -130,28 +103,21 @@ export const searchRoutes = async (req: Request, res: Response) => {
  */
 export const deleteRoute = async (req: Request, res: Response) => {
   try {
-    if (!req.user?.sub) {
-      return res.status(401).json({
-        message: "Unauthorized",
-      });
+    const userId = req.user?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const user = await User.findOne({
-      cognitoSub: req.user.sub,
-    });
+    const user = await User.findById(userId);
 
     if (!user) {
-      return res.status(404).json({
-        message: "User not found",
-      });
+      return res.status(404).json({ message: "User not found" });
     }
 
     const id = req.params.id as string;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        message: "Invalid route id",
-      });
+      return res.status(400).json({ message: "Invalid route id" });
     }
 
     const route = await Route.findOneAndDelete({
@@ -160,19 +126,12 @@ export const deleteRoute = async (req: Request, res: Response) => {
     });
 
     if (!route) {
-      return res.status(404).json({
-        message: "Route not found",
-      });
+      return res.status(404).json({ message: "Route not found" });
     }
 
-    return res.status(200).json({
-      message: "Route deleted",
-    });
+    return res.status(200).json({ message: "Route deleted" });
   } catch (err) {
-    console.error(err);
-
-    return res.status(500).json({
-      message: "Server error",
-    });
+    console.error("Delete Error:", err);
+    return res.status(500).json({ message: "Server error" });
   }
 };
